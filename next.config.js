@@ -10,4 +10,5 @@ module.exports = {
     path: "",
   },
   assetPrefix: "./",
+  basePath: '/ailegis-api-doc',
 };
