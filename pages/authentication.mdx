@@ -1,3 +1,59 @@
-# About
+# Access Token
 
-This is the about page! This page is shown on the navbar.
+All calls to the AILEGIS API require a **Bearer Authentication**.
+
+
+## Token in the API request ? 
+
+Within each call make sure you add within the header the `Authorization` tag:
+
+```md /token/
+Authorization: `Bearer <token>`
+```
+
+Here is an example using the `fetch` API:
+
+```ts filename="example.ts" copy /token/
+const response = await fetch("<enpoint-url>", {
+        method: "GET",
+        headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+        },
+        // body: JSON.stringify(data)
+    });
+```
+
+## How to create a Token ?
+
+The `token` is a JWT signed token with a `secret_key` provided by us.
+If you do not have yet a secret key, or your key is expired, reach out to us at info@ailegis.ch . 
+The JWT token must include a claim with specific field (some optional):
+
+```md
+{
+    "email": string <required>
+    "roles": string[] <optional>
+}
+```
+
+Here is an example of a creation of a token: 
+
+```ts filename="example.ts" copy /token/
+import { SignJWT } from "jose";
+
+const secret_key = "<SECRET-KEY>"
+
+const claim = {
+    email: "example@example.com"
+    roles: [];
+}
+
+const token = await new SignJWT(claim)
+            .setProtectedHeader({ alg: "HS256" })
+            .setExpirationTime("3h")
+            .sign(secret_key);
+
+```
+
+Note that it is your responsability to set an appropriate expiration date for your token.

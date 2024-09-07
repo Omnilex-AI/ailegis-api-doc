@@ -1,31 +1,137 @@
-# Another Page
+# Legal Research API
 
-```js filename="demo.js" {3} copy
-let a = 1;
+There is only one endpoint for the legal research api. 
 
-console.log(a);
+It points to an `EventSource` that will stream multiple `json` objects.
+
+### Connect to the Endpoint
+
+The endpoint url is:
+```md copy
+https://springbootbackendapp.mangowave-7a18d2e6.switzerlandnorth.azurecontainerapps.io/app/advice/combined
 ```
 
-## Component
+```ts copy
+import { SSE } from "sse.js";
 
-import { useState } from 'react'
+const endpoint_url = "https://springbootbackendapp.mangowave-7a18d2e6.switzerlandnorth.azurecontainerapps.io/app/advice/combined"
 
-{/* Import CSS modules */}
-import styles from '../components/counters.module.css'
+const source = new SSE(endpoint_url, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json", 
+    Authorization: `Bearer <token>`,
+  },
+  payload: JSON.stringify({
+    "query": "I had an accident with a e-scooter in Zug, how can I reply to this letter ?"
+    "fastMode": false,
+    "documents": [
+        {
+          name : "letter_complaint",
+          content: "Dear Sir/Madam, After ..."
+        }
+      ]
+  }),
+});
+```
 
-export const Counter = () => {
-  const [count, setCount] = useState(0);
-  return (
-    <div>
-      <button onClick={() => setCount(count + 1)} className={styles.counter}>Clicked {count} times</button>
-    </div>
-  );
-};
+Note that it is important that the `EventSource` should be started with a `POST` request.
+In the example we use the `sse.js` package to set the post method.
 
-<Counter/>
+There is a demo endoinpt that will fake all replies but keep the same format, this is usefull to speed up development and testing:  
+```md copy
+https://springbootbackendapp.mangowave-7a18d2e6.switzerlandnorth.azurecontainerapps.io/demo/advice/combined
+``` 
 
-## External Component
+### Parameters
 
-import Counters from '../components/counters'
+There are 3 parameters at the creation of the EventSource: 
 
-<Counters />
+- `query` : the legal question as a string.
+- `fastMode` : a boolean, if true response will be faster but with lower quality.
+- `documents` : an array of object, each with a `name` and `content` field as strings, these document all the files attached to the questions.
+
+
+### Output types
+
+
+#### Draft Stream
+```json
+{
+  "response" : "string"
+} 
+```
+You have to concatenate all the `response` strings to form the final draft. 
+The last `response` include the string `<AILEGIS-END>`.
+
+#### Document List
+```json
+{
+  "considerationDetails ": {
+    "label": "paragraph|court_decision|commentary|document",
+    "title": "string",
+    "url": "string",
+    "relevant_ids": "number[]",
+    "article_citations": "string[]",
+    "article_paragraphs_text": "string[]"
+  }
+}
+```
+
+#### Legal Area
+```json
+{
+  "legalArea" : "string"
+} 
+```
+
+#### Confidence Score
+```json
+{
+  "confidence" : "number"
+} 
+```
+
+#### Error
+```json
+{
+  "error" : "string"
+} 
+```
+
+### Examples
+
+Do not forget to replace the `token`
+
+```ts filename="example.ts" copy
+import { SSE } from "sse.js";
+
+const endpoint_url = "https://springbootbackendapp.mangowave-7a18d2e6.switzerlandnorth.azurecontainerapps.io/app/advice/combined"
+
+const source = new SSE(endpoint_url, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json", 
+    Authorization: `Bearer <token>`,
+  },
+  payload: JSON.stringify({
+    "query": "I had an accident with a e-scooter in Zug, what can I do ?"
+    "fastMode": false,
+    "documents": []
+  }),
+});
+
+source.addEventListener("message", async (e: { data: string }) => {
+  let data = JSON.parse(e.data);
+  console.log(data)
+});
+```
+
+Example of output: 
+```md copy
+{
+  considerationDetails: [ {label: 'paragraph', title: 'VRV, 3. Teil: Verhalten bei Unfällen, Sicherung der Unfallstelle', relevant_ids: Array(1), url: 'https://www.fedlex.admin.ch/eli/cc/1962/1364_1409_1420/de#art_54', article_citations: Array(3), …} , ... ]
+}
+{response: '', considerationDetails: null, legalArea: null, confidence: null}
+
+```
