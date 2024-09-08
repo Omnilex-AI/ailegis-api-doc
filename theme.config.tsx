@@ -8,6 +8,13 @@ const config: DocsThemeConfig = {
   footer: {
     text: 'Ailegis API documentation<',
   },
+  head: (
+    <>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <meta property="og:title" content="Ailegis API documentation" />
+      <meta property="og:description" content="Legal research API" />
+    </>
+  )
 }
 
 export default config
