@@ -6,10 +6,10 @@ It points to an [`EventSource`](https://developer.mozilla.org/fr/docs/Web/API/Ev
 
 ### Connect to the Endpoint
 
-The endpoint url is:
-```md copy
-https://springbootbackendapp.mangowave-7a18d2e6.switzerlandnorth.azurecontainerapps.io/app/advice/combined
-```
+The endpoint url is: `https://springbootbackendapp.mangowave-7a18d2e6.switzerlandnorth.azurecontainerapps.io/app/advice/combined`
+
+To connect to the EventStream, you need to send a `POST` request to the endpoint and listen to the events of the `EventSource`. 
+Here is an example of an implementation (in this example we use the `sse.js` package to force the POST request at the creation of the EventSource):
 
 ```ts copy
 import { SSE } from "sse.js";
@@ -35,13 +35,10 @@ const source = new SSE(endpoint_url, {
 });
 ```
 
-Note that it is important that the `EventSource` should be started with a `POST` request.
-In the example we use the `sse.js` package to set the post method.
-
-There is a demo endoinpt that will fake all replies but keep the same format, this is usefull to speed up development and testing:  
-```md copy
-https://springbootbackendapp.mangowave-7a18d2e6.switzerlandnorth.azurecontainerapps.io/demo/advice/combined
-``` 
+> There is a demo endoinpt that will fake all replies but keep the same format, this is usefull to speed up development and testing:  
+> ```md copy
+> https://springbootbackendapp.mangowave-7a18d2e6.switzerlandnorth.azurecontainerapps.io/demo/advice/combined
+> ``` 
 
 ### Parameters
 
