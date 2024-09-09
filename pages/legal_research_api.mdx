@@ -3,6 +3,7 @@
 There is only one endpoint for the legal research api. 
 
 It points to an [`EventSource`](https://developer.mozilla.org/fr/docs/Web/API/EventSource) that will stream multiple `json` objects.
+We use the event approach because we compute part of the answer at different times, instead of waiting for everything to be ready this allow to show intermediate results as they come.
 
 ### Connect to the Endpoint
 
