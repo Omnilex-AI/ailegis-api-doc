@@ -66,12 +66,19 @@ The last `response` include the string `<AILEGIS-END>`.
     "label": "paragraph|court_decision|commentary|document",
     "title": "string",
     "url": "string",
-    "relevant_ids": "number[]",
-    "article_citations": "string[]",
     "article_paragraphs_text": "string[]"
+    "article_citations": "string[]",
+    "relevant_ids": "number[]",
   }
 }
 ```
+
+- `label` : a string representing the type of the Document
+- `title` : a string representing the title of the Document
+- `url` : a string representing the url of the Document
+- `article_paragraphs_text` : an array of string, each item of the array is a paragraph of the Document
+- `article_citations` : an array of string, each item of the array is the title of the paragraph of `article_paragraphs_text` at that index
+- `relevant_ids` : an array of number, each item of the array return a relevance score for the given question of the paragraph of `article_paragraphs_text` at that index. The number can have any value, it is used to compare paragraph within the same Document.
 
 #### *legalArea* : Legal Area
 ```json
