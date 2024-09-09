@@ -47,10 +47,10 @@ const source = new SSE(endpoint_url, {
 > https://springbootbackendapp.mangowave-7a18d2e6.switzerlandnorth.azurecontainerapps.io/demo/advice/combined
 > ``` 
 
-### Output types
+### Event types
 
 
-#### Draft Stream
+#### *response* : Draft Stream
 ```json
 {
   "response" : "string"
@@ -59,7 +59,7 @@ const source = new SSE(endpoint_url, {
 You have to concatenate all the `response` strings to form the final draft. 
 The last `response` include the string `<AILEGIS-END>`.
 
-#### Document List
+#### *considerationDetails* : Document List
 ```json
 {
   "considerationDetails ": {
@@ -73,30 +73,30 @@ The last `response` include the string `<AILEGIS-END>`.
 }
 ```
 
-#### Legal Area
+#### *legalArea* : Legal Area
 ```json
 {
   "legalArea" : "string"
 } 
 ```
 
-#### Confidence Score
+#### *confidence* : Confidence Score
 ```json
 {
   "confidence" : "number"
 } 
 ```
 
-#### Error
+#### *error* : Error
 ```json
 {
   "error" : "string"
 } 
 ```
 
-### Examples
+### Fully functional example
 
-Do not forget to replace the `token`
+> Do not forget to replace the `token` , if you do not have one look at the [authentication doc](/authentication)
 
 ```ts filename="example.ts" copy
 import { SSE } from "sse.js";
@@ -122,7 +122,7 @@ source.addEventListener("message", async (e: { data: string }) => {
 });
 ```
 
-Example of output: 
+Example of output on the console: 
 ```md copy
 {
   considerationDetails: [ {label: 'paragraph', title: 'VRV, 3. Teil: Verhalten bei Unfällen, Sicherung der Unfallstelle', relevant_ids: Array(1), url: 'https://www.fedlex.admin.ch/eli/cc/1962/1364_1409_1420/de#art_54', article_citations: Array(3), …} , ... ]
@@ -147,11 +147,10 @@ Example of output:
 }
 
 {
-  confidence: 75
-}
-
-{
   legalArea: "Construction law"
 }
 
+{
+  confidence: 75
+}
 ```
