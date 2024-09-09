@@ -14,6 +14,8 @@ Authorization: `Bearer <token>`
 Here is an example using the `fetch` API:
 
 ```ts filename="example.ts" copy /token/
+const token = "<token>"
+
 const response = await fetch("<enpoint-url>", {
         method: "GET",
         headers: {
