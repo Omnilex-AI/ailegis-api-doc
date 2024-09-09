@@ -9,7 +9,14 @@ It points to an [`EventSource`](https://developer.mozilla.org/fr/docs/Web/API/Ev
 The endpoint url is: `https://springbootbackendapp.mangowave-7a18d2e6.switzerlandnorth.azurecontainerapps.io/app/advice/combined`
 
 To connect to the EventStream, you need to send a `POST` request to the endpoint and listen to the events of the `EventSource`. 
-Here is an example of an implementation (in this example we use the `sse.js` package to force the POST request at the creation of the EventSource):
+
+There are 3 parameters to add in the body of the `POST` request: 
+
+- `query` : the legal question as a string.
+- `fastMode` : a boolean, if true response will be faster but with lower quality.
+- `documents` : an array of object, each with a `name` and `content` field as strings, these document all the files attached to the questions.
+
+Here is an example of an implementation in typescript (in this example we use the `sse.js` package to force the POST request at the creation of the EventSource):
 
 ```ts copy
 import { SSE } from "sse.js";
@@ -39,15 +46,6 @@ const source = new SSE(endpoint_url, {
 > ```md copy
 > https://springbootbackendapp.mangowave-7a18d2e6.switzerlandnorth.azurecontainerapps.io/demo/advice/combined
 > ``` 
-
-### Parameters
-
-There are 3 parameters at the creation of the EventSource: 
-
-- `query` : the legal question as a string.
-- `fastMode` : a boolean, if true response will be faster but with lower quality.
-- `documents` : an array of object, each with a `name` and `content` field as strings, these document all the files attached to the questions.
-
 
 ### Output types
 
