@@ -17,7 +17,7 @@ There are 3 parameters to add in the body of the `POST` request:
 - `fastMode` : a boolean, if true response will be faster but with lower quality.
 - `documents` : an array of object, each with a `name` and `content` field as strings, these document all the files attached to the questions.
 
-Here is an example of an implementation in typescript (in this example we use the `sse.js` package to force the `POST` request to create the `EventSource`):
+Here is an example of an implementation in typescript (in this example we use the [`sse.js`](https://github.com/mpetazzoni/sse.js?files=1) package to force the `POST` request to create the `EventSource`):
 
 ```ts copy
 import { SSE } from "sse.js";
