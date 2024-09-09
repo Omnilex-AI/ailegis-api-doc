@@ -8,7 +8,7 @@ It points to an [`EventSource`](https://developer.mozilla.org/fr/docs/Web/API/Ev
 
 The endpoint url is: `https://springbootbackendapp.mangowave-7a18d2e6.switzerlandnorth.azurecontainerapps.io/app/advice/combined`
 
-To connect to the EventStream, you need to send a `POST` request to the endpoint and listen to the events of the `EventSource`, the last event is be the *confidence* message.
+To connect to the EventStream, you need to send a `POST` request to the endpoint and listen to the events of the `EventSource`, each event has a type ( *response*, *considerationDetails*, *confidence*, *error*, ** ), the last event is of type *confidence*.
 
 There are 3 parameters to add in the body of the `POST` request: 
 
