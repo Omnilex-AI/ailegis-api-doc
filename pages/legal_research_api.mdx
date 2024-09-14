@@ -16,7 +16,7 @@ There are 2 parameters to add in the body of the `POST` request:
 | Parameter   | Type              | Required | Description   |
 |-------------|-------------------|----------|---------------|
 | `query`     | `string`          | Yes      | The legal question as a string.    |
-| `documents` | Array of Objects  | No       | An array of objects, each with a `name` and `content` field as strings. These are the files attached to the question. |
+| `documents` | `{name:string, content:string}[]`           | No       | The files attached to the question. |
 
 Here is an example of an implementation in typescript (in this example we use the [`sse.js`](https://github.com/mpetazzoni/sse.js?files=1) package to force the `POST` request to create the `EventSource`):
 
