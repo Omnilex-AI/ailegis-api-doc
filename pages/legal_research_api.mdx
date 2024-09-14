@@ -11,11 +11,12 @@ The endpoint url is: `https://springbootbackendapp.mangowave-7a18d2e6.switzerlan
 
 To connect to the EventStream, you need to send a `POST` request to the endpoint and listen to the events of the `EventSource`, each event has a type ( *response*, *considerationDetails*, *confidence*, *error*, *legalArea* ), the last event is of type *confidence*.
 
-There are 3 parameters to add in the body of the `POST` request: 
+There are 2 parameters to add in the body of the `POST` request: 
 
-- `query` : the legal question as a string.
-- `fastMode` : a boolean, if true response will be faster but with lower quality.
-- `documents` : an array of object, each with a `name` and `content` field as strings, these document all the files attached to the questions.
+| Parameter   | Type              | Required | Description   |
+|-------------|-------------------|----------|---------------|
+| `query`     | `string`          | Yes      | The legal question as a string.    |
+| `documents` | Array of Objects  | No       | An array of objects, each with a `name` and `content` field as strings. These are the files attached to the question. |
 
 Here is an example of an implementation in typescript (in this example we use the [`sse.js`](https://github.com/mpetazzoni/sse.js?files=1) package to force the `POST` request to create the `EventSource`):
 
