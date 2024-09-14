@@ -1,16 +1,15 @@
 import React from 'react';
 
-const Badge = ({ children }) => (
-  <span style={{
+export function Badge ({ children }) {
+  return <span style={{
     backgroundColor: 'orange',
-    color: 'white',
     borderRadius: '5px',
     padding: '2px 6px',
     fontSize: '0.8em'
   }}>
     {children}
   </span>
-);
+}
 
 
 # Legal Research API
@@ -104,7 +103,8 @@ The last `response` include the string `<AILEGIS-END>`.
 } 
 ```
 
-#### *confidence* : Confidence Score <Badge>experimental</Badge>
+#### *confidence* : Confidence Score 
+<Badge>Experimental</Badge>
 ```json
 {
   "confidence" : "number"
@@ -118,6 +118,11 @@ The confidence score range from 0 to 100. Note that even a score of 100 does not
   "error" : "string"
 } 
 ```
+The error string is a message, not an error code as it is more meant for debugging. Note that the API call still respect the HTTP error codes standards.
+
+Here are some examples of the type of messages: 
+- `Failed to parse documents, error: ...`
+- `Lost connection with database, error: ...`
 
 ### Fully functional example
 
