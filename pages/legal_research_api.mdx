@@ -1,3 +1,18 @@
+import React from 'react';
+
+const Badge = ({ children }) => (
+  <span style={{
+    backgroundColor: 'orange',
+    color: 'white',
+    borderRadius: '5px',
+    padding: '2px 6px',
+    fontSize: '0.8em'
+  }}>
+    {children}
+  </span>
+);
+
+
 # Legal Research API
 
 There is only one endpoint for the legal research api. The goal of this endpoint is to given a legal question and some optional document attached, return a draft answer and all the documents relevant to answer that question.
@@ -89,7 +104,7 @@ The last `response` include the string `<AILEGIS-END>`.
 } 
 ```
 
-#### *confidence* : Confidence Score <span style={{ color: 'orange' }}>experimental</span>
+#### *confidence* : Confidence Score <Badge>experimental</Badge>
 ```json
 {
   "confidence" : "number"
