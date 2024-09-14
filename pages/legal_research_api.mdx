@@ -89,12 +89,13 @@ The last `response` include the string `<AILEGIS-END>`.
 } 
 ```
 
-#### *confidence* : Confidence Score
+#### *confidence* : Confidence Score <span style={{ color: 'orange' }}>experimental</span>
 ```json
 {
   "confidence" : "number"
 } 
 ```
+The confidence score range from 0 to 100. Note that even a score of 100 does not guarantee the legal accuracy of the answer.
 
 #### *error* : Error
 ```json
