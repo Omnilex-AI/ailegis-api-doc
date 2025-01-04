@@ -21,7 +21,7 @@ We use the event approach because we compute part of the answer at different tim
 
 ### Connect to the Endpoint
 
-The endpoint url is: `https://springbootbackendapp.mangowave-7a18d2e6.switzerlandnorth.azurecontainerapps.io/app/advice/combined`
+The endpoint url is: `https://api.ailegis.pro/app/advice/combined`
 
 To connect to the EventStream, you need to send a `POST` request to the endpoint and listen to the events of the `EventSource`, each event has a type ( *response*, *considerationDetails*, *confidence*, *error*, *legalArea* ), the last event is of type *confidence*.
 
@@ -37,7 +37,7 @@ Here is an example of an implementation in typescript (in this example we use th
 ```ts copy
 import { SSE } from "sse.js";
 
-const endpoint_url = "https://springbootbackendapp.mangowave-7a18d2e6.switzerlandnorth.azurecontainerapps.io/app/advice/combined"
+const endpoint_url = "https://api.ailegis.pro/app/advice/combined"
 
 const source = new SSE(endpoint_url, {
   method: "POST",
@@ -58,13 +58,7 @@ const source = new SSE(endpoint_url, {
 });
 ```
 
-> There is a demo endoinpt that will fake all replies but keep the same format, this is usefull to speed up development and testing:  
-> ```md copy
-> https://springbootbackendapp.mangowave-7a18d2e6.switzerlandnorth.azurecontainerapps.io/demo/advice/combined
-> ``` 
-
 ### Event types
-
 
 #### *response* : Draft Stream
 ```json
@@ -131,7 +125,7 @@ Here are some examples of the type of messages:
 ```ts filename="example.ts" copy
 import { SSE } from "sse.js";
 
-const endpoint_url = "https://springbootbackendapp.mangowave-7a18d2e6.switzerlandnorth.azurecontainerapps.io/app/advice/combined"
+const endpoint_url = "https://api.ailegis.pro/app/advice/combined"
 
 const source = new SSE(endpoint_url, {
   method: "POST",
