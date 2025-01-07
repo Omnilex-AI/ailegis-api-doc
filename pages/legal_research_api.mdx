@@ -46,8 +46,8 @@ interface FileContent {
 
 interface Interaction {
   // General
-  id: string;
-  date: Date;
+  id: string; // not used but required
+  date: Date; // not used but required
 
   // Input
   question: string;
@@ -56,7 +56,6 @@ interface Interaction {
 
 interface Thread {
   interactions: Interaction[];
-  id: string;
 }
 
 interface QueryPayload {
@@ -84,7 +83,6 @@ const source = new SSE(endpoint_url, {
           ],
         },
       ],
-      id: "",
     },
   } as QueryPayload),
 });
