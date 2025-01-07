@@ -36,25 +36,65 @@ Here is an example of an implementation in typescript (in this example we use th
 
 ```ts copy
 import { SSE } from "sse.js";
-
+ 
 const endpoint_url = "https://api.ailegis.pro/app/advice/combined"
 
+export enum ConsiderationType {
+    ParagraphOrArticle = "paragraph",
+    CantonalParagraphOrArticle = "cantonal_paragraph",
+    CourtDecision = "court_decision",
+    Webpage = "webpage",
+    Commentary = "commentary",
+    Document = "document",
+    Deadline = "deadline",
+    Template = "template",
+ }
+
+interface FileContent {
+    name: string;
+    content: string;
+  }
+  
+interface Interaction {
+    // General
+    id: string;
+    date: Date;
+  
+    // Input
+    question: string;
+    documents?: FileContent[];
+    considerationTypes?: ConsiderationType[];
+  }
+  
+interface Thread {
+    interactions: Interaction[];
+    id: string;
+  }
+  
+interface QueryPayload {
+    thread: Thread;
+ }
+ 
 const source = new SSE(endpoint_url, {
   method: "POST",
   headers: {
     "Content-Type": "application/json", 
     Authorization: `Bearer <token>`,
   },
-  payload: JSON.stringify({
-    "query": "I had an accident with a e-scooter in Zug, how can I reply to this letter ?"
-    "fastMode": false,
-    "documents": [
-        {
-          name : "letter_complaint",
-          content: "Dear Sir/Madam, After ..."
-        }
-      ]
-  }),
+  payload: JSON.stringify(
+    {
+        thread: {
+          interactions: [
+            {
+              id: "0",
+              date: new Date(),
+              question: "I had an accident with a e-scooter in Zug, how can I reply to this letter ?",
+            },
+          ],
+          id: "",
+        },
+    } as QueryPayload
+ ),
 });
 ```
 
