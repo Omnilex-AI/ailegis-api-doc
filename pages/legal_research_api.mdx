@@ -162,13 +162,26 @@ const endpoint_url = "https://api.ailegis.pro/app/advice/combined"
 const source = new SSE(endpoint_url, {
   method: "POST",
   headers: {
-    "Content-Type": "application/json", 
+    "Content-Type": "application/json",
     Authorization: `Bearer <token>`,
   },
   payload: JSON.stringify({
-    "query": "I had an accident with a e-scooter in Zug, what can I do ?"
-    "fastMode": false,
-    "documents": []
+    thread: {
+      interactions: [
+        {
+          id: "0",
+          date: new Date(),
+          question: "I had an accident with a e-scooter in Zug, how can I reply to this letter ?",
+          documents: [
+            {
+              name: "letter_complaint",
+              content: "Dear Sir/Madam, After ...",
+            },
+          ],
+        },
+      ],
+      id: "",
+    },
   }),
 });
 
