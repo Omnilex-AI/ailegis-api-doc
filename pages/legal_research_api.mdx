@@ -46,8 +46,8 @@ interface FileContent {
 
 interface Interaction {
   // General
-  id: string; // not used but required
-  date: Date; // not used but required
+  id: string; // not used but required ( can be any string )
+  date: Date; // not used but required ( can be any Date )
 
   // Input
   question: string;
@@ -177,8 +177,7 @@ const source = new SSE(endpoint_url, {
             },
           ],
         },
-      ],
-      id: "",
+      ]
     },
   }),
 });
