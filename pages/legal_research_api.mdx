@@ -73,12 +73,13 @@ const source = new SSE(endpoint_url, {
   },
   payload: JSON.stringify({
     thread: {
+      date: new Date(),
+      country: "CH",
       interactions: [
         {
           id: "0",
-          date: new Date(),
-          country: "CH",
           question: "I had an accident with a e-scooter in Zug, how can I reply to this letter ?",
+          date: new Date(),
           documents: [
             {
               name: "letter_complaint",
