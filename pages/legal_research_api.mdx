@@ -31,6 +31,9 @@ There are 2 parameters to add in the body of the `POST` request:
 |-------------|-------------------|----------|---------------|
 | `query`     | `string`          | Yes      | The legal question as a string.    |
 | `documents` | `{name:string, content:string}[]`           | No       | The files attached to the question. |
+| `country` |  `string`          | Yes       | The country abbreviation in capital letter, ex: CH |
+
+The country field will for the search to be done in a specific jurisdiction. ( Currently only CH is supported, DE,FR,US and BR are in beta state )
 
 Here is an example of an implementation in typescript (in this example we use the [`sse.js`](https://github.com/mpetazzoni/sse.js?files=1) package to force the `POST` request to create the `EventSource`):
 
