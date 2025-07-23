@@ -143,7 +143,7 @@ The last `response` include the string `<AILEGIS-END>`.
 <Badge>Experimental</Badge>
 ```json
 {
-  "agentSteps" : {message: string; level: 'INFO' | 'DEBUG'}[]
+  "agentSteps" : {"message": string; "level": "INFO" | "DEBUG"}[]
 } 
 ```
 The agentSteps are intermediate steps the agent is taking before giving the final answer. It is meant primarly to be used for debugging purposes, but can be extended to UI purposes to show the reasoning of the model while the user is waiting for the answer. 
@@ -231,3 +231,9 @@ Example of output on the console:
 }
 
 ```
+
+### Linking considerationDetails to segment in the response.
+
+The answers are forced to follow the naming of the citation of the considerationDetails, if that considerationDetails is relevant for that paragraph.
+The easiest way to make a link from the text to the source is to use a regex on the considerationDetails to find matching citations.
+
