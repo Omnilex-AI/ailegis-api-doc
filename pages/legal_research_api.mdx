@@ -21,7 +21,7 @@ We use the event approach because we compute part of the answer at different tim
 
 ### Connect to the Endpoint
 
-The endpoint url is: `https://api.omnilex.ai/app/advice/combined`
+The endpoint url is: `https://api.omnilex.ai/advice/app/combined`
 
 To connect to the EventStream, you need to send a `POST` request to the endpoint and listen to the events of the `EventSource`, each event has a type ( *response*, *considerationDetails*, *confidence*, *error*, *legalArea* ), the last event is of type *confidence*.
 
@@ -40,7 +40,7 @@ Here is an example of an implementation in typescript (in this example we use th
 ```ts copy
 import { SSE } from "sse.js";
 
-const endpoint_url = "https://api.omnilex.ai/app/advice/combined";
+const endpoint_url = "https://api.omnilex.ai/advice/app/combined";
 
 interface FileContent {
   name: string;
@@ -170,7 +170,7 @@ Here are some examples of the type of messages:
 ```ts filename="example.ts" copy
 import { SSE } from "sse.js";
 
-const endpoint_url = "https://api.ailegis.pro/app/advice/combined"
+const endpoint_url = "https://api.omnilex.ai/advice/app/combined"
 
 const source = new SSE(endpoint_url, {
   method: "POST",
