@@ -61,6 +61,7 @@ interface Interaction {
 }
 
 interface Thread {
+  id: string; // if not defined a new thread is created and saved
   country: "CH",
   date: Date;
   ownerUsername: email;
@@ -103,6 +104,8 @@ Once the POST request is triggered, if the token is valid as well as the payload
 These objects can have different fields, sometimes just one, sometimes multiple at the same time.
 
 Here is the list of the most important fields (if you see a new field appearing, you can ignore it, as it would be an experimental feature, and we will notify you when the experimental feature is ready for production).
+
+The last event is the thread object that return the entire new state of the thread. 
 
 #### *response* : Draft Stream
 ```json
@@ -234,10 +237,63 @@ Example of output on the console:
   legalArea: "Construction law"
 }
 
+...
+
+{
+  thread: { ... }
+}
+
 ```
 
 ### Linking considerationDetails to segment in the response.
 
 The answers are forced to follow the naming of the citation of the considerationDetails, if that considerationDetails is relevant for that paragraph.
 The easiest way to make a link from the text to the source is to use a regex on the considerationDetails to find matching citations.
+
+
+### Chat/Discussion mode with follow up questions
+
+To ask for a follow up, we can resend the current thread and add a new interaction to it. In general the api will always answer the last interaction, using old interaction as context.
+
+What is important to note is the id of the thread, as this is a follow up, we want to update in the history the same thread with the follow up result, for it the id if the thread should be the same. If the id is empty or the email of the owner of the thread is not the one asking the follow up a new thread is stored in the history.
+
+```ts filename="example.ts" copy
+import { SSE } from "sse.js";
+
+const endpoint_url = "https://api.omnilex.ai/advice/app/combined"
+const email = "test@test.ch"
+
+const old_thread: Thread = { ... } // this thread is the thread on which we want to ask a follow up question
+
+// if old_thread.id is null or old_thread.ownerUsername !== email, then a new thread will be stored in the database.
+
+const source = new SSE(endpoint_url, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    Authorization: `Bearer <token>`,
+  },
+  payload: JSON.stringify({
+    thread: {
+      ...old_thread,
+      interactions: [
+        ...old_thread.interactions,
+        {
+          id: "1",
+          question: "Can you elaborate a bit more that topic ?",
+          date: new Date(),
+          documents: [],
+          sources: [],
+          reply: ""
+        },
+      ],
+    },
+  }),
+});
+
+source.addEventListener("message", async (e: { data: string }) => {
+  let data = JSON.parse(e.data);
+  console.log(data)
+});
+```
 
