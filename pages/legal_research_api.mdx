@@ -1,6 +1,6 @@
 import React from 'react';
 
-export function Badge ({ children }) {
+export function Badge({ children }) {
   return <span style={{
     backgroundColor: 'orange',
     borderRadius: '5px',
@@ -68,8 +68,22 @@ interface Thread {
   interactions: Interaction[];
 }
 
-interface QueryPayload {
+interface OmnilexResultThread {
+  id?: string;
+  date: Date;
+  ownerUsername: string;
+
+  can_read: string[]
+  can_write: string[]
+
+  status: 'PROCESSING' | 'COMPLETED' | 'ERROR';
+  errors?: any[];
+
+  type: "thread";
   thread: Thread;
+}
+interface QueryPayload {
+  thread: OmnilexResultThread;
 }
 
 const source = new SSE(endpoint_url, {
@@ -80,20 +94,30 @@ const source = new SSE(endpoint_url, {
   },
   payload: JSON.stringify({
     thread: {
+      
       date: new Date(),
-      country: "CH",
       ownerUsername: email,
-      interactions: [
-        {
-          id: "0",
-          question: "I had an accident with a e-scooter in Zug, how can I reply to this letter ?",
-          date: new Date(),
-          documents: [],
-          sources: [],
-          reply: ""
-        },
-      ],
+      can_read: [],
+      can_write: [],
+      status: "COMPLETED",
+      type: "thread",
+
+      thread: {
+        date: new Date(),
+        country: "CH",
+        ownerUsername: email,
+        interactions: [
+          {
+            id: "0",
+            question: "I had an accident with a e-scooter in Zug, how can I reply to this letter ?",
+            date: new Date(),
+            documents: [],
+            sources: [],
+            reply: ""
+          },
+        ],
     },
+  }
   } as QueryPayload),
 });
 ```
@@ -187,18 +211,26 @@ const source = new SSE(endpoint_url, {
   payload: JSON.stringify({
     thread: {
       date: new Date(),
-      country: "CH",
       ownerUsername: email,
-      interactions: [
-        {
-          id: "0",
-          question: "I had an accident with a e-scooter in Zug, how can I reply to this letter ?",
-          date: new Date(),
-          documents: [],
-          sources: [],
-          reply: ""
-        },
-      ],
+      can_read: [],
+      can_write: [],
+      status: "COMPLETED",
+      type: "thread",
+      thread: {
+        date: new Date(),
+        country: "CH",
+        ownerUsername: email,
+        interactions: [
+          {
+            id: "0",
+            question: "I had an accident with a e-scooter in Zug, how can I reply to this letter ?",
+            date: new Date(),
+            documents: [],
+            sources: [],
+            reply: ""
+          },
+        ],
+      },
     },
   }),
 });
@@ -263,7 +295,7 @@ import { SSE } from "sse.js";
 const endpoint_url = "https://api.omnilex.ai/advice/app/combined"
 const email = "test@test.ch"
 
-const old_thread: Thread = { ... } // this thread is the thread on which we want to ask a follow up question
+const old_thread: OmnilexResultThread = { ... } // this thread is the thread on which we want to ask a follow up question
 
 // if old_thread.id is null or old_thread.ownerUsername !== email, then a new thread will be stored in the database.
 
@@ -276,17 +308,20 @@ const source = new SSE(endpoint_url, {
   payload: JSON.stringify({
     thread: {
       ...old_thread,
-      interactions: [
-        ...old_thread.interactions,
-        {
-          id: "1",
-          question: "Can you elaborate a bit more that topic ?",
-          date: new Date(),
-          documents: [],
-          sources: [],
-          reply: ""
-        },
-      ],
+      thread: {
+        ...old_thread.thread,
+        interactions: [
+          ...old_thread.thread.interactions,
+          {
+            id: "1",
+            question: "Can you elaborate a bit more that topic ?",
+            date: new Date(),
+            documents: [],
+            sources: [],
+            reply: ""
+          },
+        ],
+      },
     },
   }),
 });

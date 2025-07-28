@@ -1,1 +1,1 @@
-# Ailegis API documentation
+# Omnilex API documentation
