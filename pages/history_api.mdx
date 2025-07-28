@@ -2,19 +2,7 @@
 
 ## Base URL
 
-The base URL for all endpoints is:
-
-```plaintext copy
-https://api.omnilex.ai
-```
-
-## Authentication
-
-All endpoints require authentication using a Bearer token in the Authorization header:
-
-```
-Authorization: Bearer <your-token>
-```
+The base URL for all endpoints is: `https://api.omnilex.ai`
 
 ## Endpoints
 
@@ -34,7 +22,7 @@ export interface SearchResultsRequest {
 }
 
 export interface SearchResultsResponse {
-  results: OmnilexResultThread[];
+  results: OmnilexResultThread[]; // see Legal Research API for more details
 }
 ```
 
@@ -51,7 +39,7 @@ export interface SearchResultsResponse {
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `results` | `OmnilexResult[]` | Array of matching result objects |
+| `results` | `OmnilexResultThread[]` | Array of matching result objects |
 
 
 #### Simple example

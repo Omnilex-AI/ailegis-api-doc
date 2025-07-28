@@ -23,7 +23,7 @@ We use the event approach because we compute part of the answer at different tim
 
 The endpoint url is: `https://api.omnilex.ai/advice/app/combined`
 
-To connect to the EventStream, you need to send a `POST` request to the endpoint and listen to the events of the `EventSource`, each event has a type ( *response*, *considerationDetails*, *confidence*, *error*, *legalArea* ), the last event is of type *confidence*.
+To connect to the EventStream, you need to send a `POST` request to the endpoint and listen to the events of the `EventSource`, each event has a type ( *response*, *considerationDetails*, *confidence*, *error*, *legalArea* ), the last event is of type *result*.
 
 There are 2 parameters to add in the body of the `POST` request: 
 
@@ -179,6 +179,28 @@ The last `response` include the string `<AILEGIS-END>`.
 } 
 ```
 The agentSteps are intermediate steps the agent is taking before giving the final answer. It is meant primarly to be used for debugging purposes, but can be extended to UI purposes to show the reasoning of the model while the user is waiting for the answer. 
+
+#### *resultId* : Result ID
+
+```json
+{
+  "resultId" : "string"
+} 
+```
+The resultId is the id of the OmnilexResultThread that will be stored in the history.
+It is the 1st event in the stream.
+
+
+#### *result* : Result
+
+```json
+{
+  "result" : "OmnilexResultThread"
+} 
+```
+
+The result is the final event in the steam. 
+It contains the `OmnilexResultThread` with the final answer and the list of documents that were used to answer the question, as well as the dev related metadata.
 
 #### *error* : Error
 ```json
