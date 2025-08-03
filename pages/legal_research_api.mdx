@@ -56,6 +56,9 @@ interface Interaction {
   // Input
   question: string;
   documents?: FileContent[];
+  inputSelectedSources?: InputSelectedSources;
+
+  // Reply
   reply: string;
   sources: ConsiderationDetails[]
 }
@@ -353,4 +356,104 @@ source.addEventListener("message", async (e: { data: string }) => {
   console.log(data)
 });
 ```
+
+### Filter the search on specific areas. 
+
+By deafult Omnilex will search through all available resources the user has access to, to provide the best answer. 
+But you can setup input filters that will force Omnilex to only search though a specific category. 
+For example only base your answer on court decisions. 
+
+Note that even if you put the filter in the query, if the user does not have the permission to access this resource, 
+Omnilex will not search through these resources for that user.
+
+Here is how to set it up as a parameter of the Thread: 
+```ts filename="example.ts" copy
+
+const source = new SSE(endpoint_url, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    Authorization: `Bearer <token>`,
+  },
+  payload: JSON.stringify({
+    thread: {
+      
+      date: new Date(),
+      ownerUsername: email,
+      can_read: [],
+      can_write: [],
+      status: "COMPLETED",
+      type: "thread",
+
+      thread: {
+        date: new Date(),
+        country: "CH",
+        ownerUsername: email,
+        interactions: [
+          {
+            id: "0",
+            question: "I had an accident with a e-scooter in Zug, how can I reply to this letter ?",
+            date: new Date(),
+            inputSelectedSources: {
+                selectedSources: [ { id: "court-decisions" , filters: [] } ]
+              }
+            documents: [],
+            sources: [],
+            reply: ""
+          },
+        ],
+    },
+  }
+  } as QueryPayload),
+});
+```
+
+
+Here are the currently supported filters: 
+```ts filename="example.ts" copy
+export interface InternalDataSource {
+  id: 'internal-data';
+}
+
+export interface ArticlesSource {
+  id: 'articles';
+  filters: string[];
+}
+
+export interface CourtDecisionsSource {
+  id: 'court-decisions';
+  filters: string[];
+}
+
+export interface KoordinationSource {
+  id: 'koordination';
+}
+
+export interface LegalisSource {
+  id: 'legalis';
+}
+
+export interface OmnilexCommentariesSource {
+  id: 'omnilex-commentaries';
+}
+
+export interface WebsitesSource {
+  id: 'websites';
+  blocked: string[];
+}
+
+export type SelectedSource =
+  | InternalDataSource
+  | ArticlesSource
+  | CourtDecisionsSource
+  | OmnilexCommentariesSource
+  | KoordinationSource
+  | LegalisSource
+  | WebsitesSource;
+
+export interface InputSelectedSources {
+  selectedSources: SelectedSource[];
+}
+```
+
 
