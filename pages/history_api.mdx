@@ -8,95 +8,128 @@ The base URL for all endpoints is: `https://api.omnilex.ai`
 
 ### Search Results History
 
-**POST** `/results-history/search`
+# Results History API
 
-Search through historical results based on user emails, and date range.
+## Endpoint
+`POST /results-history/search`
 
-#### TypeScript Interfaces
+## Description
+Search and retrieve user results history with pagination support.
 
-```ts copy
-export interface SearchResultsRequest {
-  userEmails: string[];
-  dateFrom?: Date;
-  dateTo?: Date;
-}
+## Request Body
 
-export interface SearchResultsResponse {
-  results: OmnilexResultThread[]; // see Legal Research API for more details
+```typescript
+interface SearchResultsRequest {
+  userEmails: string[];        // Required: List of user emails to search
+  type?: OmnilexResultType;     // Optional: Filter by result type
+  dateFrom?: Date;              // Optional: Filter from date
+  dateTo?: Date;                // Optional: Filter to date
+  page?: number;                // Optional: Page number (default: 1)
+  pageSize?: number;            // Optional: Items per page (default: 10)
 }
 ```
 
-#### Parameters
+## Response
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `userEmails` | `string[]` | Yes | Array of user email addresses to search for |
-| `dateFrom` | `Date` | No | Start date for date range filter |
-| `dateTo` | `Date` | No | End date for date range filter |
+```typescript
+interface SearchResultsResponse {
+  results: OmnilexResult[];
+  pagination: {
+    currentPage: number;
+    pageSize: number;
+    totalPages: number;
+    totalCount: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  }
+}
+```
 
+## Examples
 
-#### Response Schema
+### Basic Search
+```typescript
+// Request
+{
+  "userEmails": ["user@example.com"]
+}
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `results` | `OmnilexResultThread[]` | Array of matching result objects |
+// Response
+{
+  "results": [...],  // First 10 results
+  "pagination": {
+    "currentPage": 1,
+    "pageSize": 10,
+    "totalPages": 5,
+    "totalCount": 50,
+    "hasNextPage": true,
+    "hasPreviousPage": false
+  }
+}
+```
 
+### With Pagination
+```typescript
+// Request
+{
+  "userEmails": ["user@example.com"],
+  "page": 2,
+  "pageSize": 20
+}
 
-#### Simple example
+// Response
+{
+  "results": [...],  // Items 21-40
+  "pagination": {
+    "currentPage": 2,
+    "pageSize": 20,
+    "totalPages": 3,
+    "totalCount": 50,
+    "hasNextPage": true,
+    "hasPreviousPage": true
+  }
+}
+```
 
-```js filename="search-history.js" copy
-async function searchResultsHistory(request, token) {
-  const response = await fetch('https://api.omnilex.ai/results-history/search', {
+### With Filters
+```typescript
+// Request
+{
+  "userEmails": ["user1@example.com", "user2@example.com"],
+  "type": "thread",
+  "dateFrom": "2024-01-01",
+  "dateTo": "2024-12-31",
+  "pageSize": 25
+}
+```
+
+## Frontend Usage
+
+```typescript
+async function fetchResults(page: number = 1, pageSize: number = 20) {
+  const response = await fetch('/api/results-history/search', {
     method: 'POST',
-    headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      userEmails: ["john@example.com"],
-      dateFrom: new Date("2024-01-01"),
-      dateTo: new Date("2024-01-31")
-    }),
+      userEmails: ['user@example.com'],
+      page,
+      pageSize
+    })
   });
 
-  if (!response.ok) {
-    throw new Error(`Failed to search results: ${response.statusText}`);
-  }
-
   const data = await response.json();
-  return data.results;
+  
+  // Access results and pagination
+  console.log('Results:', data.results);
+  console.log('Total count:', data.pagination.totalCount);
+  console.log('Has more pages:', data.pagination.hasNextPage);
+  
+  return data;
 }
 ```
 
-#### Response
-
-```json
-{
-  "results": [
-    {
-      "id": "123",
-      "date": "2024-01-03",
-      "ownerUsername": "john@example.com",
-      "can_read": [],
-      "can_write": [],
-      "status": "COMPLETED",
-      "type": "thread",
-      "thread": {
-        ...
-      }
-    },
-    {
-      "id": "124",
-      "date": "2024-01-05",
-      "ownerUsername": "john@example.com",
-      "can_read": [],
-      "can_write": [],
-      "status": "COMPLETED",
-      "type": "thread",
-      "thread": {
-        ...
-      }
-    }
-  ]
-}
-```
+## Notes
+- Results are ordered by `updatedAt` timestamp (most recent update first)
+- Pagination uses offset-based implementation internally
+- All responses include pagination metadata
+- Default page size is 10 items per page
