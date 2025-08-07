@@ -13,7 +13,7 @@ Request body:
 ```typescript
 interface SearchResultsRequest {
   userEmails: string[];        // Required
-  type?: 'thread' | 'table' | 'workflow';
+  type?: 'thread';
   dateFrom?: Date;
   dateTo?: Date;
   page?: number;               // default: 1
@@ -59,9 +59,7 @@ Deletes do not remove the DB row. The item is marked as `DELETED` and its payloa
 - Effect:
   - `status` becomes `DELETED`
   - Payload field is removed based on `type`:
-    - `table` → the `table` field is removed
     - `thread` → the `thread` field is removed
-    - `workflow` → the `workflow` field is removed
   - Other metadata (id, owner, permissions, date, type) are preserved
 
 Responses:
