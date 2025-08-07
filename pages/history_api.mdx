@@ -1,39 +1,30 @@
-# History API
+### Results History API
 
-## Base URL
+### Endpoints
+- `POST /results-history/search`: Search and retrieve results with pagination
+- `DELETE /results-history/:id`: Soft-delete a result by id (marks as DELETED and removes payload)
 
-The base URL for all endpoints is: `https://api.omnilex.ai`
+### Authentication
+All endpoints are protected by JWT. Pass a valid bearer token.
 
-## Endpoints
+### Search
 
-### Search Results History
-
-# Results History API
-
-## Endpoint
-`POST /results-history/search`
-
-## Description
-Search and retrieve user results history with pagination support.
-
-## Request Body
-
+Request body:
 ```typescript
 interface SearchResultsRequest {
-  userEmails: string[];        // Required: List of user emails to search
-  type?: OmnilexResultType;     // Optional: Filter by result type
-  dateFrom?: Date;              // Optional: Filter from date
-  dateTo?: Date;                // Optional: Filter to date
-  page?: number;                // Optional: Page number (default: 1)
-  pageSize?: number;            // Optional: Items per page (default: 10)
+  userEmails: string[];        // Required
+  type?: 'thread' | 'table' | 'workflow';
+  dateFrom?: Date;
+  dateTo?: Date;
+  page?: number;               // default: 1
+  pageSize?: number;           // default: 10
 }
 ```
 
-## Response
-
+Response:
 ```typescript
 interface SearchResultsResponse {
-  results: OmnilexResult[];
+  results: OmnilexResult[];    // Can include items with status === 'DELETED'
   pagination: {
     currentPage: number;
     pageSize: number;
@@ -41,95 +32,71 @@ interface SearchResultsResponse {
     totalCount: number;
     hasNextPage: boolean;
     hasPreviousPage: boolean;
-  }
+  };
 }
 ```
 
-## Examples
-
-### Basic Search
-```typescript
-// Request
-{
-  "userEmails": ["user@example.com"]
-}
-
-// Response
-{
-  "results": [...],  // First 10 results
-  "pagination": {
-    "currentPage": 1,
-    "pageSize": 10,
-    "totalPages": 5,
-    "totalCount": 50,
-    "hasNextPage": true,
-    "hasPreviousPage": false
-  }
-}
+Example:
+```bash
+curl -X POST \
+  -H "Authorization: Bearer <TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userEmails": ["user@example.com"],
+    "type": "table",
+    "page": 1,
+    "pageSize": 10
+  }' \
+  http://localhost:3000/results-history/search
 ```
 
-### With Pagination
-```typescript
-// Request
-{
-  "userEmails": ["user@example.com"],
-  "page": 2,
-  "pageSize": 20
-}
+### Soft-delete
 
-// Response
-{
-  "results": [...],  // Items 21-40
-  "pagination": {
-    "currentPage": 2,
-    "pageSize": 20,
-    "totalPages": 3,
-    "totalCount": 50,
-    "hasNextPage": true,
-    "hasPreviousPage": true
-  }
-}
+Deletes do not remove the DB row. The item is marked as `DELETED` and its payload is removed.
+
+- Endpoint: `DELETE /results-history/:id`
+- Authorization: The requester must be the `ownerUsername` or be listed in `can_write`.
+- Effect:
+  - `status` becomes `DELETED`
+  - Payload field is removed based on `type`:
+    - `table` → the `table` field is removed
+    - `thread` → the `thread` field is removed
+    - `workflow` → the `workflow` field is removed
+  - Other metadata (id, owner, permissions, date, type) are preserved
+
+Responses:
+```json
+// 200 OK
+{ "success": true }
+
+// 404 Not Found
+{ "error": "Result not found" }
+
+// 403 Forbidden
+{ "error": "You do not have permission to delete this result" }
 ```
 
-### With Filters
-```typescript
-// Request
-{
-  "userEmails": ["user1@example.com", "user2@example.com"],
-  "type": "thread",
-  "dateFrom": "2024-01-01",
-  "dateTo": "2024-12-31",
-  "pageSize": 25
-}
+Example:
+```bash
+curl -X DELETE \
+  -H "Authorization: Bearer <TOKEN>" \
+  http://localhost:3000/results-history/00000000-0000-0000-0000-000000000000
 ```
 
-## Frontend Usage
-
+### Frontend usage (search)
 ```typescript
-async function fetchResults(page: number = 1, pageSize: number = 20) {
+async function fetchResults(page = 1, pageSize = 20) {
   const response = await fetch('/api/results-history/search', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      userEmails: ['user@example.com'],
-      page,
-      pageSize
-    })
+    body: JSON.stringify({ userEmails: ['user@example.com'], page, pageSize })
   });
-
-  const data = await response.json();
-  
-  // Access results and pagination
-  console.log('Results:', data.results);
-  console.log('Total count:', data.pagination.totalCount);
-  console.log('Has more pages:', data.pagination.hasNextPage);
-  
-  return data;
+  return response.json();
 }
 ```
 
-## Notes
-- Results are ordered by `updatedAt` timestamp (most recent update first)
+### Notes
+- Results are ordered by `updatedAt` timestamp
 - Pagination uses offset-based implementation internally
-- All responses include pagination metadata
-- Default page size is 10 items per page
+- Responses include pagination metadata
+- Default page size is 10
