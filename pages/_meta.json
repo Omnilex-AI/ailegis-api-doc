@@ -2,5 +2,5 @@
   "index" : "Introduction",
   "authentication" : "Authentication",
   "legal_research_api" : "Legal Research API",
-  "history_api" : "History API"
+  "results_api" : "Results API"
 }

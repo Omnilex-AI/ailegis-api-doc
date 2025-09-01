@@ -1,8 +1,9 @@
-### Results History API
+### Results API
 
 ### Endpoints
-- `POST /results-history/search`: Search and retrieve results with pagination
-- `DELETE /results-history/:id`: Soft-delete a result by id (marks as DELETED and removes payload)
+- `POST /results/search`: Search and retrieve results with pagination
+- `DELETE /results/:id`: Soft-delete a result by id (marks as DELETED and removes payload)
+- `POST /results/:id/feedback`: Add feedback to a result
 
 ### Authentication
 All endpoints are protected by JWT. Pass a valid bearer token.
@@ -81,6 +82,68 @@ curl -X DELETE \
   http://localhost:3000/results-history/00000000-0000-0000-0000-000000000000
 ```
 
+### Feedback
+
+Adds user feedback to a specific result.
+
+- Endpoint: `POST /results/:id/feedback`
+- Authorization: Requires valid JWT token
+
+Request body:
+```typescript
+interface AddFeedbackRequest {
+  vote: 'upvote' | 'downvote' | 'undefined';  // FeedbackVote enum
+  feedback: string;                            // User's feedback text
+}
+```
+
+Response:
+```typescript
+interface AddFeedbackResponse {
+  success: boolean;
+  message?: string;
+}
+```
+
+Responses:
+```json
+// 200 OK
+{
+  "success": true,
+  "message": "Feedback added successfully"
+}
+
+// 403 Forbidden (if no permission)
+{
+  "success": false,
+  "message": "You do not have permission to add feedback to this result"
+}
+
+// 404 Not Found
+{
+  "success": false,
+  "message": "Result not found"
+}
+
+// 500 Internal Server Error
+{
+  "success": false,
+  "message": "Failed to add feedback"
+}
+```
+
+Example:
+```bash
+curl -X POST \
+  -H "Authorization: Bearer <TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vote": "upvote",
+    "feedback": "This was very helpful!"
+  }' \
+  http://localhost:3000/results/00000000-0000-0000-0000-000000000000/feedback
+```
+
 ### Frontend usage (search)
 ```typescript
 async function fetchResults(page = 1, pageSize = 20) {
@@ -93,8 +156,24 @@ async function fetchResults(page = 1, pageSize = 20) {
 }
 ```
 
+### Frontend usage (feedback)
+```typescript
+async function addFeedback(resultId: string, vote: 'upvote' | 'downvote' | 'undefined', feedback: string) {
+  const response = await fetch(`/api/results/${resultId}/feedback`, {
+    method: 'POST',
+    headers: { 
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${getToken()}`
+    },
+    body: JSON.stringify({ vote, feedback })
+  });
+  return response.json();
+}
+```
+
 ### Notes
 - Results are ordered by `updatedAt` timestamp
 - Pagination uses offset-based implementation internally
 - Responses include pagination metadata
 - Default page size is 10
+
