@@ -1,0 +1,278 @@
+# ConsiderationDetails Types
+
+The `ConsiderationDetails` type system represents various types of legal sources and documents that are used to generate responses in the Legal Research API. Each type has specific properties and use cases.
+
+## ConsiderationType Enum
+
+Defines all possible types of legal considerations:
+
+```typescript
+export enum ConsiderationType {
+  ParagraphOrArticle = 'paragraph',
+  CantonalParagraphOrArticle = 'cantonal_paragraph',
+  CommunalParagraphOrArticle = 'communal_paragraph',
+  CourtDecision = 'court_decision',
+  Webpage = 'webpage',
+  Commentary = 'commentary',
+  Koordination = 'koordination',
+  Document = 'document',
+  Deadline = 'deadline',
+  Authority = 'authority',
+  ExplicitlyMentioned = 'explicitly_mentioned',
+  CaseDocument = 'case_document',
+  FAQ = 'faq',
+  Template = 'template',
+  Nutshell = 'nutshell',
+  OtherInternal = 'other_internal',
+  Reasoning = 'reasoning',
+  Other = 'other',
+}
+```
+
+## Base Type
+
+All consideration details share a common base structure:
+
+```typescript
+export type ConsiderationDetailsBase = {
+  label: ConsiderationType;
+  title: string;
+}
+```
+
+## Standard Structure Types
+
+Most consideration types follow a standard structure pattern with these common fields:
+- `label`: The consideration type
+- `title`: Document/source title
+- `relevant_ids`: Array of relevant segment IDs
+- `article_citations`: Array of article/section citations
+- `url`: Link to the source
+- `article_paragraphs_text`: Array of relevant text excerpts
+
+### Article Types
+
+#### ParagraphOrArticle
+Federal law articles and paragraphs:
+
+```typescript
+export type ParagraphOrArticleDetails = ConsiderationDetailsBase & {
+  label: ConsiderationType.ParagraphOrArticle;
+  title: string;
+  relevant_ids: number[];
+  article_citations: string[];
+  url: string;
+  article_paragraphs_text: string[];
+}
+```
+
+#### CantonalParagraphOrArticle
+Cantonal (state-level) law articles:
+
+```typescript
+export type CantonalParagraphOrArticleDetails = ConsiderationDetailsBase & {
+  label: ConsiderationType.CantonalParagraphOrArticle;
+  title: string;
+  relevant_ids: number[];
+  article_citations: string[];
+  url: string;
+  article_paragraphs_text: string[];
+}
+```
+
+#### CommunalParagraphOrArticle
+Communal (municipal-level) law articles:
+
+```typescript
+export type CommunalParagraphOrArticleDetails = ConsiderationDetailsBase & {
+  label: ConsiderationType.CommunalParagraphOrArticle;
+  title: string;
+  relevant_ids: number[];
+  article_citations: string[];
+  url: string;
+  article_paragraphs_text: string[];
+}
+```
+
+### Commentary Types
+
+#### Commentary
+Legal commentaries (Legalis or Omnilex based on permissions):
+
+```typescript
+export type CommentaryDetails = ConsiderationDetailsBase & {
+  label: ConsiderationType.Commentary;
+  title: string;
+  relevant_ids: number[];
+  article_citations: string[];
+  url: string;
+  article_paragraphs_text: string[];
+}
+```
+
+#### Koordination
+Koordination legal resources:
+
+```typescript
+export type KoordinationDetails = ConsiderationDetailsBase & {
+  label: ConsiderationType.Koordination;
+  title: string;
+  relevant_ids: number[];
+  article_citations: string[];
+  url: string;
+  article_paragraphs_text: string[];
+}
+```
+
+### Court Decision Type
+
+Court decisions and rulings:
+
+```typescript
+export type CourtDecisionDetails = ConsiderationDetailsBase & {
+  label: ConsiderationType.CourtDecision;
+  title: string;
+  relevant_ids: number[];
+  article_citations: string[];
+  url: string;
+  article_paragraphs_text: string[];
+}
+```
+
+### Other Standard Types
+
+The following types also follow the same standard structure pattern:
+
+- **Webpage** (`webpage`) - General web pages
+- **Document** (`document`) - User-uploaded or system documents
+- **Deadline** (`deadline`) - Legal deadline information
+- **Authority** (`authority`) - Authority/competency information
+- **CaseDocument** (`case_document`) - Case-specific documents
+- **FAQ** (`faq`) - Frequently asked questions
+- **Template** (`template`) - Document templates
+- **Nutshell** (`nutshell`) - Summarized legal information
+- **ExplicitlyMentioned** (`explicitly_mentioned`) - Sources explicitly requested by user
+- **Reasoning** (`reasoning`) - AI reasoning steps (backend use)
+- **Other** (`other`) - Other source types
+
+Example for Webpage type:
+
+```typescript
+export type WebpageDetails = ConsiderationDetailsBase & {
+  label: ConsiderationType.Webpage;
+  title: string;
+  relevant_ids: number[];
+  article_citations: string[];
+  url: string;
+  article_paragraphs_text: string[];
+}
+```
+
+## Special Structure Type
+
+### OtherInternal
+
+Internal file sources have a different structure with file-specific fields:
+
+```typescript
+export type OtherInternalDetails = ConsiderationDetailsBase & {
+  label: ConsiderationType.OtherInternal;
+  file_name: string;
+  relevant_ids: number[];
+  file_segments_title: string[];
+  file_segments_url: string[];
+  file_segments_content: string[];
+}
+```
+
+## Union Type
+
+The `ConsiderationDetails` type is a discriminated union of all possible consideration detail types:
+
+```typescript
+export type ConsiderationDetails =
+  | ParagraphOrArticleDetails
+  | CantonalParagraphOrArticleDetails
+  | CommunalParagraphOrArticleDetails
+  | CourtDecisionDetails
+  | WebpageDetails
+  | CommentaryDetails
+  | KoordinationDetails
+  | DocumentDetails
+  | DeadlineDetails
+  | AuthorityDetails
+  | ExplicitlyMentionedDetails
+  | CaseDocumentDetails
+  | FAQDetails
+  | TemplateDetails
+  | NutshellDetails
+  | OtherInternalDetails
+  | ReasoningDetails
+  | OtherDetails;
+```
+
+## Usage Example
+
+When processing consideration details from the API response:
+
+```typescript
+function processConsideration(detail: ConsiderationDetails) {
+    // Common properties available on all types
+    console.log("Type:", detail.label);
+    console.log("Title:", detail.title);
+    
+    // Type-specific handling
+    switch (detail.label) {
+        case ConsiderationType.OtherInternal:
+            // detail is typed as OtherInternalDetails
+            console.log("File name:", detail.file_name);
+            detail.file_segments_content.forEach(content => {
+                console.log("Segment:", content);
+            });
+            break;
+            
+        case ConsiderationType.ParagraphOrArticle:
+            // detail is typed as ParagraphOrArticleDetails
+            console.log("Citations:", detail.article_citations.join(", "));
+            console.log("URL:", detail.url);
+            break;
+            
+        // ... handle other types
+    }
+}
+```
+
+## Response Example
+
+Here's an example of consideration details in an API response:
+
+```json
+{
+  "considerationDetails": [
+    {
+      "label": "paragraph",
+      "title": "VRV, 3. Teil: Verhalten bei Unfällen, Sicherung der Unfallstelle",
+      "relevant_ids": [95, 87, 82],
+      "url": "https://www.fedlex.admin.ch/eli/cc/1962/1364_1409_1420/de#art_54",
+      "article_citations": ["Art. 54", "Art. 55", "Art. 56"],
+      "article_paragraphs_text": ["Bei Unfällen...", "Der Fahrzeugführer...", "Die Polizei..."]
+    },
+    {
+      "label": "court_decision",
+      "title": "BGE 145 IV 123",
+      "relevant_ids": [88],
+      "url": "https://www.bger.ch/ext/eurospider/live/de/php/aza/http/index.php?highlight_docid=atf%3A%2F%2F145-IV-123",
+      "article_citations": ["E. 3.2"],
+      "article_paragraphs_text": ["Das Bundesgericht hat entschieden..."]
+    },
+    {
+      "label": "other_internal",
+      "file_name": "internal_guidelines.pdf",
+      "relevant_ids": [75, 70],
+      "file_segments_title": ["Section 2.1", "Section 2.2"],
+      "file_segments_url": ["#section-2-1", "#section-2-2"],
+      "file_segments_content": ["Guidelines state...", "Procedures require..."]
+    }
+  ]
+}
+```

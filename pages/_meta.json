@@ -2,5 +2,7 @@
   "index" : "Introduction",
   "authentication" : "Authentication",
   "legal_research_api" : "Legal Research API",
+  "omnilex_file_types" : "OmnilexFile Types",
+  "consideration_details_types" : "ConsiderationDetails Types",
   "results_api" : "Results API"
 }

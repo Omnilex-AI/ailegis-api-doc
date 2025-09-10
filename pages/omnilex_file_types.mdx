@@ -1,0 +1,199 @@
+# OmnilexFile Types
+
+The `OmnilexFile` type system is used to represent different types of files and documents in the Omnilex system. This page provides a comprehensive reference for all OmnilexFile type definitions.
+
+## FileStatus Enum
+
+Represents the processing status of a file in the system.
+
+```typescript
+export enum FileStatus {
+    UPLOADING = 'UPLOADING',
+    EXTRACTING = 'EXTRACTING',
+    CHUNKING = 'CHUNKING',
+    EMBEDDING = 'EMBEDDING',
+    COMPLETED = 'COMPLETED',
+    ERROR = 'ERROR',
+}
+```
+
+## FileType Enum
+
+Defines the different types of files that can be processed by the system.
+
+```typescript
+export enum FileType {
+    TEMPLATE = 'TEMPLATE',
+    LEGALIS = 'LEGALIS',
+    COURT_DECISION = 'COURT_DECISION',
+    LEGACY_FOLDER = 'LEGACY_FOLDER',
+    FOLDER_FILE = 'FOLDER_FILE',
+    BASE = 'BASE',
+    WORD_ADDIN = 'WORD_ADDIN',
+}
+```
+
+## Base Type
+
+All OmnilexFile types extend from this base type:
+
+```typescript
+export type OmnilexFileBase = {
+    name: string;
+
+    originalRawFileBlobName: string;
+    extractedContentBlobName: string;
+
+    status: FileStatus;
+
+    ownerEmail?: string;
+
+    updatedAt?: Date;
+    createdAt?: Date;
+
+    errors?: Error[];
+
+    type: FileType;
+}
+```
+
+## OmnilexFile Type Variants
+
+### OmnilexFileBasic
+
+The simplest file type, used for basic file storage.
+
+```typescript
+export type OmnilexFileBasic = OmnilexFileBase & {
+    type: FileType.BASE;
+}
+```
+
+### OmnilexFileTemplate
+
+Represents document templates with configurable fields.
+
+```typescript
+export type OmnilexFileTemplate = OmnilexFileBase & {
+    type: FileType.TEMPLATE;
+
+    content: string;
+    considerationType?: ConsiderationType;
+    id?: string;
+    previousId?: string;
+    templateType?: TemplateType;
+    templateFields?: { [key: string]: string };
+    language?: LanguageOptions;
+}
+```
+
+### OmnilexFileLegalis
+
+Represents Legalis legal content files.
+
+```typescript
+export type OmnilexFileLegalis = OmnilexFileBase & {
+    type: FileType.LEGALIS;
+
+    blobContentUrl?: string; // Blob path for content retrieval (e.g., "legalis/K_BSK_ORI_OR_Art266g")
+}
+```
+
+### OmnilexFileCourtDecision
+
+Represents court decision documents with metadata.
+
+```typescript
+export type OmnilexFileCourtDecision = OmnilexFileBase & {
+    type: FileType.COURT_DECISION;
+
+    courtName: string;
+    country: string;
+    date: Date;
+}
+```
+
+### OmnilexFileLegacyFolder
+
+Represents legacy folder structures.
+
+```typescript
+export type OmnilexFileLegacyFolder = OmnilexFileBase & {
+    type: FileType.LEGACY_FOLDER;
+    id: string;
+}
+```
+
+### OmnilexFileFolderFile
+
+Represents files within case folders, with support for translations.
+
+```typescript
+export type OmnilexFileFolderFile = OmnilexFileBase & {
+    type: FileType.FOLDER_FILE;
+
+    caseFolderId: string;
+    fileId: string;
+
+    translatedFiles?: Record<string, { // the key is the target language
+        originalRawFileBlobName: string;
+    }>
+}
+```
+
+### OmnilexFileWordAddin
+
+Special type for temporary documents used in Word add-in contexts.
+
+```typescript
+/**
+ * Word add-in document type for temporary documents
+ * This type is used when working with documents in the Word add-in context
+ * where we have a temporary URL and content but not all the backend properties
+ */
+export type OmnilexFileWordAddin = OmnilexFileBase & {
+    type: FileType.WORD_ADDIN;
+
+    content: string;
+    tempUrl: string;
+}
+```
+
+## Union Type
+
+The `OmnilexFile` type is a discriminated union of all possible file types:
+
+```typescript
+export type OmnilexFile = 
+    | OmnilexFileBasic 
+    | OmnilexFileTemplate 
+    | OmnilexFileLegalis 
+    | OmnilexFileCourtDecision 
+    | OmnilexFileLegacyFolder 
+    | OmnilexFileFolderFile 
+    | OmnilexFileWordAddin;
+```
+
+## Usage Example
+
+When working with OmnilexFile in the API, you can use type guards based on the `type` property:
+
+```typescript
+function processFile(file: OmnilexFile) {
+    switch (file.type) {
+        case FileType.TEMPLATE:
+            // file is typed as OmnilexFileTemplate
+            console.log("Template content:", file.content);
+            break;
+        case FileType.COURT_DECISION:
+            // file is typed as OmnilexFileCourtDecision
+            console.log("Court:", file.courtName);
+            break;
+        // ... handle other types
+    }
+}
+```
+
+## Related Types
+
+For types referenced in OmnilexFile definitions (such as `ConsiderationType`, `TemplateType`, and `LanguageOptions`), please refer to the [ConsiderationDetails Types](/consideration_details_types) page.
