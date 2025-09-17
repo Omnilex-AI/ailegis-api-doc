@@ -74,6 +74,23 @@ export type OmnilexFileBasic = OmnilexFileBase & {
 Represents document templates with configurable fields.
 
 ```typescript
+export enum TemplateType {
+  // String matches the actual file name in the UI
+  Omnilex = 'omnilex.docx',
+  VN = 'V_Brief VN.docx',
+  Generic = 'V_Generisch.docx',
+  MVEmail = 'V_MVE-Mail.docx',
+}
+
+export enum LanguageOptions {
+  German = 'de',
+  French = 'fr',
+  Italian = 'it',
+  English = 'en',
+  Portuguese = 'pt',
+  Unknown = 'unknown',
+}
+
 export type OmnilexFileTemplate = OmnilexFileBase & {
     type: FileType.TEMPLATE;
 
