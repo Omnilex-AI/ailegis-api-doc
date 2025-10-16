@@ -25,14 +25,6 @@ The endpoint url is: `https://api.omnilex.ai/advice/app/combined`
 
 To connect to the EventStream, you need to send a `POST` request to the endpoint and listen to the events of the `EventSource`, each event has a type ( *response*, *considerationDetails*, *confidence*, *error*, *legalArea* ), the last event is of type *result*.
 
-There are 2 parameters to add in the body of the `POST` request: 
-
-| Parameter   | Type              | Required | Description   |
-|-------------|-------------------|----------|---------------|
-| `query`     | `string`          | Yes      | The legal question as a string.    |
-| `documents` | `OmnilexFile[]`           | No       | The files attached to the question. See [OmnilexFile Types](/omnilex_file_types) for details. |
-| `country` |  `string`          | Yes       | The country abbreviation in capital letter, ex: CH |
-
 The country field will for the search to be done in a specific jurisdiction. ( Currently only CH and DE is supported,FR,US and BR are in beta state )
 
 Here is an example of an implementation in typescript (in this example we use the [`sse.js`](https://github.com/mpetazzoni/sse.js?files=1) package to force the `POST` request to create the `EventSource`):
@@ -58,6 +50,7 @@ interface Interaction {
   question: string;
   documents?: OmnilexFile[];
   inputSelectedSources?: InputSelectedSources;
+  countries: Country[]
 
   // Reply
   reply: string;
@@ -66,7 +59,6 @@ interface Interaction {
 
 interface Thread {
   id: string; // if not defined a new thread is created and saved
-  country: "CH",
   date: Date;
   ownerUsername: email;
   interactions: Interaction[];
@@ -108,11 +100,11 @@ const source = new SSE(endpoint_url, {
 
       thread: {
         date: new Date(),
-        country: "CH",
         ownerUsername: email,
         interactions: [
           {
             id: "0",
+            countries: ["CH"]
             question: "I had an accident with a e-scooter in Zug, how can I reply to this letter ?",
             date: new Date(),
             documents: [],
@@ -262,11 +254,11 @@ const source = new SSE(endpoint_url, {
       type: "thread",
       thread: {
         date: new Date(),
-        country: "CH",
         ownerUsername: email,
         interactions: [
           {
             id: "0",
+            countries: ["CH"]
             question: "I had an accident with a e-scooter in Zug, how can I reply to this letter ?",
             date: new Date(),
             documents: [],
@@ -431,11 +423,11 @@ const source = new SSE(endpoint_url, {
 
       thread: {
         date: new Date(),
-        country: "CH",
         ownerUsername: email,
         interactions: [
           {
             id: "0",
+            countries: ["CH"]
             question: "I had an accident with a e-scooter in Zug, how can I reply to this letter ?",
             date: new Date(),
             inputSelectedSources: {
