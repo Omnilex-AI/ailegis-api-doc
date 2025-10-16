@@ -29,6 +29,26 @@ export enum ConsiderationType {
 }
 ```
 
+## Imports and Type Dependencies
+
+```typescript
+import { ConsiderationType } from './consideration-types';
+
+// Paragraph interface used in CaseDocumentDetails and OtherInternalDetails
+export interface Paragraph {
+  content?: string; // Optional - omit when storing references to reduce payload size
+  role?: string;
+  boundingRegions?: {
+    pageNumber: number;
+    polygon: number[];
+  }[];
+  spans?: {
+    offset: number;
+    length: number;
+  }[];
+}
+```
+
 ## Base Type
 
 All consideration details share a common base structure:
@@ -37,18 +57,20 @@ All consideration details share a common base structure:
 export type ConsiderationDetailsBase = {
   label: ConsiderationType;
   title: string;
-}
+  relevant_ids: number[];
+  citations: string[];
+  content: string[];
+};
 ```
 
-## Standard Structure Types
+## Type Definitions
 
-Most consideration types follow a standard structure pattern with these common fields:
+Most consideration types extend the base structure and add a `url` field. The base structure already includes:
 - `label`: The consideration type
 - `title`: Document/source title
 - `relevant_ids`: Array of relevant segment IDs
-- `article_citations`: Array of article/section citations
-- `url`: Link to the source
-- `article_paragraphs_text`: Array of relevant text excerpts
+- `citations`: Array of article/section citations
+- `content`: Array of relevant text excerpts
 
 ### Article Types
 
@@ -58,12 +80,8 @@ Federal law articles and paragraphs:
 ```typescript
 export type ParagraphOrArticleDetails = ConsiderationDetailsBase & {
   label: ConsiderationType.ParagraphOrArticle;
-  title: string;
-  relevant_ids: number[];
-  article_citations: string[];
   url: string;
-  article_paragraphs_text: string[];
-}
+};
 ```
 
 #### CantonalParagraphOrArticle
@@ -72,12 +90,8 @@ Cantonal (state-level) law articles:
 ```typescript
 export type CantonalParagraphOrArticleDetails = ConsiderationDetailsBase & {
   label: ConsiderationType.CantonalParagraphOrArticle;
-  title: string;
-  relevant_ids: number[];
-  article_citations: string[];
   url: string;
-  article_paragraphs_text: string[];
-}
+};
 ```
 
 #### CommunalParagraphOrArticle
@@ -86,12 +100,8 @@ Communal (municipal-level) law articles:
 ```typescript
 export type CommunalParagraphOrArticleDetails = ConsiderationDetailsBase & {
   label: ConsiderationType.CommunalParagraphOrArticle;
-  title: string;
-  relevant_ids: number[];
-  article_citations: string[];
   url: string;
-  article_paragraphs_text: string[];
-}
+};
 ```
 
 ### Commentary Types
@@ -102,12 +112,8 @@ Legal commentaries (Legalis or Omnilex based on permissions):
 ```typescript
 export type CommentaryDetails = ConsiderationDetailsBase & {
   label: ConsiderationType.Commentary;
-  title: string;
-  relevant_ids: number[];
-  article_citations: string[];
   url: string;
-  article_paragraphs_text: string[];
-}
+};
 ```
 
 #### Koordination
@@ -116,73 +122,157 @@ Koordination legal resources:
 ```typescript
 export type KoordinationDetails = ConsiderationDetailsBase & {
   label: ConsiderationType.Koordination;
-  title: string;
-  relevant_ids: number[];
-  article_citations: string[];
   url: string;
-  article_paragraphs_text: string[];
-}
+};
 ```
 
-### Court Decision Type
+### Deadlines
+
+```typescript
+export type DeadlineDetails = ConsiderationDetailsBase & {
+  label: ConsiderationType.Deadline;
+  url: string;
+};
+```
+
+### Authorities
+
+```typescript
+export type AuthorityDetails = ConsiderationDetailsBase & {
+  label: ConsiderationType.Authority;
+  url: string;
+};
+```
+
+### Court Decisions
 
 Court decisions and rulings:
 
 ```typescript
 export type CourtDecisionDetails = ConsiderationDetailsBase & {
   label: ConsiderationType.CourtDecision;
-  title: string;
-  relevant_ids: number[];
-  article_citations: string[];
   url: string;
-  article_paragraphs_text: string[];
-}
+};
 ```
 
-### Other Standard Types
-
-The following types also follow the same standard structure pattern:
-
-- **Webpage** (`webpage`) - General web pages
-- **Document** (`document`) - User-uploaded or system documents
-- **Deadline** (`deadline`) - Legal deadline information
-- **Authority** (`authority`) - Authority/competency information
-- **CaseDocument** (`case_document`) - Case-specific documents
-- **FAQ** (`faq`) - Frequently asked questions
-- **Template** (`template`) - Document templates
-- **Nutshell** (`nutshell`) - Summarized legal information
-- **ExplicitlyMentioned** (`explicitly_mentioned`) - Sources explicitly requested by user
-- **Reasoning** (`reasoning`) - AI reasoning steps (backend use)
-- **Other** (`other`) - Other source types
-
-Example for Webpage type:
+### Webpages
 
 ```typescript
 export type WebpageDetails = ConsiderationDetailsBase & {
   label: ConsiderationType.Webpage;
-  title: string;
-  relevant_ids: number[];
-  article_citations: string[];
   url: string;
-  article_paragraphs_text: string[];
-}
+};
 ```
 
-## Special Structure Type
+### Files
 
-### OtherInternal
+#### Document
+General documents:
 
-Internal file sources have a different structure with file-specific fields:
+```typescript
+export type DocumentDetails = ConsiderationDetailsBase & {
+  label: ConsiderationType.Document;
+  url: string;
+};
+```
+
+#### CaseDocument
+Case-specific documents with paragraph structure:
+
+```typescript
+export type CaseDocumentDetails = ConsiderationDetailsBase & {
+  label: ConsiderationType.CaseDocument;
+  url: string;
+  paragraphs: Paragraph[];
+};
+```
+
+#### FAQ
+Frequently asked questions:
+
+```typescript
+export type FAQDetails = ConsiderationDetailsBase & {
+  label: ConsiderationType.FAQ;
+  url: string;
+};
+```
+
+#### Template
+Document templates:
+
+```typescript
+export type TemplateDetails = ConsiderationDetailsBase & {
+  label: ConsiderationType.Template;
+  url: string;
+};
+```
+
+#### Nutshell
+Summarized legal information:
+
+```typescript
+export type NutshellDetails = ConsiderationDetailsBase & {
+  label: ConsiderationType.Nutshell;
+  url: string;
+};
+```
+
+#### OtherInternal
+Internal file sources with additional file-specific fields:
 
 ```typescript
 export type OtherInternalDetails = ConsiderationDetailsBase & {
   label: ConsiderationType.OtherInternal;
-  file_name: string;
-  relevant_ids: number[];
-  file_segments_title: string[];
-  file_segments_url: string[];
-  file_segments_content: string[];
-}
+  url: string;
+  paragraphs: Paragraph[];
+  // TODO : Moha, we do not need these field once we refactor the internal files
+  file_name?: string;
+  file_segments_title?: string[];
+  file_segments_content?: string[];
+  file_segments_url?: string[];
+};
+```
+
+### Non-Displayable Sources
+
+#### Reasoning
+AI reasoning steps (backend use):
+
+```typescript
+export type ReasoningDetails = ConsiderationDetailsBase & {
+  label: ConsiderationType.Reasoning;
+  url: string;
+};
+```
+
+#### ExplicitlyMentioned
+Sources explicitly requested by user:
+
+```typescript
+export type ExplicitlyMentionedDetails = ConsiderationDetailsBase & {
+  label: ConsiderationType.ExplicitlyMentioned;
+  url: string;
+};
+```
+
+#### Other
+Other source types:
+
+```typescript
+export type OtherDetails = ConsiderationDetailsBase & {
+  label: ConsiderationType.Other;
+  url: string;
+};
+```
+
+#### Legacy
+Legacy source type for backward compatibility:
+
+```typescript
+export type LegacyDetails = ConsiderationDetailsBase & {
+  label: ConsiderationType.Other;
+  url: string;
+};
 ```
 
 ## Union Type
@@ -208,7 +298,8 @@ export type ConsiderationDetails =
   | NutshellDetails
   | OtherInternalDetails
   | ReasoningDetails
-  | OtherDetails;
+  | OtherDetails
+  | LegacyDetails;
 ```
 
 ## Usage Example
@@ -220,20 +311,31 @@ function processConsideration(detail: ConsiderationDetails) {
     // Common properties available on all types
     console.log("Type:", detail.label);
     console.log("Title:", detail.title);
+    console.log("Citations:", detail.citations.join(", "));
+    console.log("Content:", detail.content);
     
     // Type-specific handling
     switch (detail.label) {
         case ConsiderationType.OtherInternal:
             // detail is typed as OtherInternalDetails
-            console.log("File name:", detail.file_name);
-            detail.file_segments_content.forEach(content => {
-                console.log("Segment:", content);
+            if (detail.file_name) {
+                console.log("File name:", detail.file_name);
+            }
+            detail.paragraphs.forEach(paragraph => {
+                console.log("Paragraph:", paragraph);
+            });
+            break;
+            
+        case ConsiderationType.CaseDocument:
+            // detail is typed as CaseDocumentDetails
+            console.log("URL:", detail.url);
+            detail.paragraphs.forEach(paragraph => {
+                console.log("Paragraph:", paragraph);
             });
             break;
             
         case ConsiderationType.ParagraphOrArticle:
             // detail is typed as ParagraphOrArticleDetails
-            console.log("Citations:", detail.article_citations.join(", "));
             console.log("URL:", detail.url);
             break;
             
@@ -254,21 +356,68 @@ Here's an example of consideration details in an API response:
       "title": "VRV, 3. Teil: Verhalten bei Unfällen, Sicherung der Unfallstelle",
       "relevant_ids": [95, 87, 82],
       "url": "https://www.fedlex.admin.ch/eli/cc/1962/1364_1409_1420/de#art_54",
-      "article_citations": ["Art. 54", "Art. 55", "Art. 56"],
-      "article_paragraphs_text": ["Bei Unfällen...", "Der Fahrzeugführer...", "Die Polizei..."]
+      "citations": ["Art. 54", "Art. 55", "Art. 56"],
+      "content": ["Bei Unfällen...", "Der Fahrzeugführer...", "Die Polizei..."]
     },
     {
       "label": "court_decision",
       "title": "BGE 145 IV 123",
       "relevant_ids": [88],
       "url": "https://www.bger.ch/ext/eurospider/live/de/php/aza/http/index.php?highlight_docid=atf%3A%2F%2F145-IV-123",
-      "article_citations": ["E. 3.2"],
-      "article_paragraphs_text": ["Das Bundesgericht hat entschieden..."]
+      "citations": ["E. 3.2"],
+      "content": ["Das Bundesgericht hat entschieden..."]
+    },
+    {
+      "label": "case_document",
+      "title": "Case Analysis Document",
+      "relevant_ids": [101, 102],
+      "url": "https://example.com/case-doc",
+      "citations": ["Section 1", "Section 2"],
+      "content": ["The case analysis shows...", "Further considerations include..."],
+      "paragraphs": [
+        {
+          "content": "First paragraph of case document",
+          "role": "paragraph",
+          "boundingRegions": [
+            {
+              "pageNumber": 1,
+              "polygon": [0, 0, 595, 0, 595, 100, 0, 100]
+            }
+          ],
+          "spans": [
+            {
+              "offset": 0,
+              "length": 35
+            }
+          ]
+        },
+        {
+          "content": "Second paragraph of case document",
+          "role": "paragraph",
+          "boundingRegions": [
+            {
+              "pageNumber": 1,
+              "polygon": [0, 100, 595, 100, 595, 200, 0, 200]
+            }
+          ],
+          "spans": [
+            {
+              "offset": 35,
+              "length": 33
+            }
+          ]
+        }
+      ]
     },
     {
       "label": "other_internal",
-      "file_name": "internal_guidelines.pdf",
+      "title": "Internal Guidelines",
       "relevant_ids": [75, 70],
+      "url": "internal://guidelines",
+      "citations": ["Section 2.1", "Section 2.2"],
+      "content": ["Guidelines state...", "Procedures require..."],
+      "paragraphs": [],
+      "file_name": "internal_guidelines.pdf",
       "file_segments_title": ["Section 2.1", "Section 2.2"],
       "file_segments_url": ["#section-2-1", "#section-2-2"],
       "file_segments_content": ["Guidelines state...", "Procedures require..."]
