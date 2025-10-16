@@ -41,6 +41,15 @@ const email = "test@test.ch"
 // ConsiderationType and ConsiderationDetails types are defined in the ConsiderationDetails Types page
 // See: /consideration_details_types
 
+export enum Country {
+  CH = 'CH',
+  DE = 'DE',
+  LI = 'LI',
+  FR = 'FR',
+  US = 'US',
+  BR = 'BR',
+}
+
 interface Interaction {
   // General
   id: string; // not used but required ( can be any string )
