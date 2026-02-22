@@ -1,42 +1,63 @@
 # ConsiderationDetails Types
 
-The `ConsiderationDetails` type system represents various types of legal sources and documents that are used to generate responses in the Legal Research API. Each type has specific properties and use cases.
+The `ConsiderationDetails` type system represents the various chunks of legal sources and documents returned by the Legal Research API. Each type is a discriminated union member keyed by its `label` field.
+
+---
+
+## Source files
+
+| File | Purpose |
+|---|---|
+| `shared/types/consideration-types.types.ts` | `ConsiderationType` enum + i18n translations |
+| `shared/types/consideration-details.types.ts` | All detail types + union type |
+| `shared/types/omnilex-file.types.ts` | `OmnilexFileFolderFile`, `OmnilexFileInternal` |
+| `shared/db/casesdb/src/filesUtils.ts` | `Paragraph` interface |
+
+---
 
 ## ConsiderationType Enum
 
-Defines all possible types of legal considerations:
-
 ```typescript
 export enum ConsiderationType {
-  ParagraphOrArticle = 'paragraph',
-  CantonalParagraphOrArticle = 'cantonal_paragraph',
-  CommunalParagraphOrArticle = 'communal_paragraph',
-  CourtDecision = 'court_decision',
-  Webpage = 'webpage',
-  Commentary = 'commentary',
-  Koordination = 'koordination',
-  Document = 'document',
-  Deadline = 'deadline',
-  Authority = 'authority',
-  ExplicitlyMentioned = 'explicitly_mentioned',
-  CaseDocument = 'case_document',
-  FAQ = 'faq',
-  Template = 'template',
-  Nutshell = 'nutshell',
-  OtherInternal = 'other_internal',
-  Reasoning = 'reasoning',
-  Other = 'other',
+  FederalArticleChunk    = 'federal_article_chunk',
+  CantonalArticleChunk   = 'cantonal_article_chunk',
+  CommunalArticleChunk   = 'communal_article_chunk',
+  CommentaryChunk        = 'commentary_chunk',
+  CourtDecisionChunk     = 'court_decision_chunk',
+  CaseFileChunk          = 'case_file_chunk',
+  InternalFileChunk      = 'internal_file_chunk',
+  WebpageChunk           = 'webpage_chunk',
+  ZefixCompanyChunk      = 'zefix_company_chunk',
+  SwissregTrademarkChunk = 'swissreg_trademark_chunk',
 }
 ```
 
-## Imports and Type Dependencies
+### i18n labels (`ConsiderationTypeTranslations`)
+
+| Enum value | en | fr | de | it | pt |
+|---|---|---|---|---|---|
+| `FederalArticleChunk` | Federal Articles | Articles fédéraux | Bundesartikel | Articoli federali | Artigos federais |
+| `CantonalArticleChunk` | Cantonal Articles | Articles cantonaux | Kantonale Artikel | Articoli cantonali | Artigos cantonais |
+| `CommunalArticleChunk` | Communal Articles | Articles communaux | Gemeindeartikel | Articoli comunali | Artigos comunais |
+| `CommentaryChunk` | Commentaries | Commentaires | Kommentare | Commenti | Comentários |
+| `CourtDecisionChunk` | Court Decisions | Décisions de justice | Gerichtsentscheidungen | Decisioni giudiziarie | Decisões judiciais |
+| `CaseFileChunk` | Case Files | Dossiers | Fallakten | Fascicoli | Processos |
+| `InternalFileChunk` | Internal Files | Fichiers internes | Interne Dateien | File interni | Arquivos internos |
+| `WebpageChunk` | Websites | Sites web | Webseiten | Siti web | Sites |
+| `ZefixCompanyChunk` | Company Registry | Registre du commerce | Handelsregister | Registro delle imprese | Registro comercial |
+| `SwissregTrademarkChunk` | Trademark Registry | Registre des marques | Markenregister | Registro dei marchi | Registo de Marcas |
+
+---
+
+## Shared Dependencies
+
+### Paragraph
+
+Defined in `shared/db/casesdb/src/filesUtils.ts`. Represents a single paragraph extracted from a PDF/document.
 
 ```typescript
-import { ConsiderationType } from './consideration-types';
-
-// Paragraph interface used in CaseDocumentDetails and OtherInternalDetails
 export interface Paragraph {
-  content?: string; // Optional - omit when storing references to reduce payload size
+  content?: string; // Optional – omit when storing references to reduce payload size
   role?: string;
   boundingRegions?: {
     pageNumber: number;
@@ -49,378 +70,402 @@ export interface Paragraph {
 }
 ```
 
+### OmnilexFileFolderFile
+
+Defined in `shared/types/omnilex-file.types.ts`. Metadata for a file belonging to a case folder.
+
+```typescript
+export type OmnilexFileFolderFile = OmnilexFileBase & {
+  type: FileType.FOLDER_FILE;
+  paragraphsJsonBlobName: string;
+  convertedPdfBlobName: string;
+  caseFolderId: string;
+  fileId: string;
+  translatedFiles?: Record<string, { originalRawFileBlobName: string }>;
+};
+```
+
+### OmnilexFileInternal
+
+Defined in `shared/types/omnilex-file.types.ts`. Metadata for a firm-level internal file.
+
+```typescript
+export type OmnilexFileInternal = OmnilexFileBase & {
+  type: FileType.INTERNAL_FILE;
+  paragraphsJsonBlobName: string;
+  convertedPdfBlobName?: string;
+  fileHash: string;
+  fileSize: number;
+  fileCmsUrl: string;
+  fileCmsPath: string;
+  cmsFile?: unknown;
+};
+```
+
+Both extend `OmnilexFileBase`:
+
+```typescript
+export type OmnilexFileBase = {
+  name: string;
+  status: FileStatus;          // UPLOADING | EXTRACTING | CHUNKING | EMBEDDING | COMPLETED | ERROR
+  originalRawFileBlobName: string;
+  extractedContentBlobName: string;
+  ownerEmail?: string;
+  updatedAt?: Date;
+  createdAt?: Date;
+  errors?: SerializableError[];
+  type: FileType;
+};
+```
+
+---
+
 ## Base Type
 
-All consideration details share a common base structure:
+Every consideration detail shares this structure:
 
 ```typescript
 export type ConsiderationDetailsBase = {
+  /** Discriminant – use this to narrow the type */
   label: ConsiderationType;
+
+  /**
+   * Grouping key in the frontend.
+   * All chunks belonging to the same logical object (e.g. same article, same court decision)
+   * must share the same title.
+   */
   title: string;
-  relevant_ids: number[];
-  citations: string[];
-  content: string[];
+
+  /** Unique citation string identifying this exact chunk (e.g. "Art. 54 VRV") */
+  citation: string;
+
+  /** Text content of the chunk */
+  content: string;
 };
 ```
+
+> **Breaking change vs. previous API version**
+> - `citations: string[]` → replaced by `citation: string` (single string, not an array)
+> - `content: string[]` → replaced by `content: string` (single string, not an array)
+> - `relevant_ids: number[]` → removed entirely
+
+---
 
 ## Type Definitions
 
-Most consideration types extend the base structure and add a `url` field. The base structure already includes:
-- `label`: The consideration type
-- `title`: Document/source title
-- `relevant_ids`: Array of relevant segment IDs
-- `citations`: Array of article/section citations
-- `content`: Array of relevant text excerpts
+### Articles
 
-### Article Types
-
-#### ParagraphOrArticle
-Federal law articles and paragraphs:
+#### FederalArticleChunkDetails
+Federal law articles and paragraphs (SR / fedlex).
 
 ```typescript
-export type ParagraphOrArticleDetails = ConsiderationDetailsBase & {
-  label: ConsiderationType.ParagraphOrArticle;
+export type FederalArticleChunkDetails = ConsiderationDetailsBase & {
+  label: ConsiderationType.FederalArticleChunk;
   url: string;
 };
 ```
 
-#### CantonalParagraphOrArticle
-Cantonal (state-level) law articles:
+#### CantonalArticleChunkDetails
+Cantonal (state-level) law articles.
 
 ```typescript
-export type CantonalParagraphOrArticleDetails = ConsiderationDetailsBase & {
-  label: ConsiderationType.CantonalParagraphOrArticle;
+export type CantonalArticleChunkDetails = ConsiderationDetailsBase & {
+  label: ConsiderationType.CantonalArticleChunk;
   url: string;
 };
 ```
 
-#### CommunalParagraphOrArticle
-Communal (municipal-level) law articles:
+#### CommunalArticleChunkDetails
+Communal (municipal-level) law articles.
 
 ```typescript
-export type CommunalParagraphOrArticleDetails = ConsiderationDetailsBase & {
-  label: ConsiderationType.CommunalParagraphOrArticle;
+export type CommunalArticleChunkDetails = ConsiderationDetailsBase & {
+  label: ConsiderationType.CommunalArticleChunk;
   url: string;
 };
 ```
 
-### Commentary Types
+---
 
-#### Commentary
-Legal commentaries (Legalis or Omnilex based on permissions):
+### Commentaries
+
+#### CommentaryChunkDetails
+Legal commentaries. The `publisherName` field indicates the data source.
 
 ```typescript
-export type CommentaryDetails = ConsiderationDetailsBase & {
-  label: ConsiderationType.Commentary;
+export type CommentaryChunkDetails = ConsiderationDetailsBase & {
+  label: ConsiderationType.CommentaryChunk;
   url: string;
+  publisherName: "staempfli" | "omnilex";
 };
 ```
 
-#### Koordination
-Koordination legal resources:
-
-```typescript
-export type KoordinationDetails = ConsiderationDetailsBase & {
-  label: ConsiderationType.Koordination;
-  url: string;
-};
-```
-
-### Deadlines
-
-```typescript
-export type DeadlineDetails = ConsiderationDetailsBase & {
-  label: ConsiderationType.Deadline;
-  url: string;
-};
-```
-
-### Authorities
-
-```typescript
-export type AuthorityDetails = ConsiderationDetailsBase & {
-  label: ConsiderationType.Authority;
-  url: string;
-};
-```
+---
 
 ### Court Decisions
 
-Court decisions and rulings:
+#### CourtDecisionChunkDetails
+Court rulings (BGE, cantonal courts, etc.). Includes the decision caption and any article citations found in the decision.
 
 ```typescript
-export type CourtDecisionDetails = ConsiderationDetailsBase & {
-  label: ConsiderationType.CourtDecision;
+export type CourtDecisionChunkDetails = ConsiderationDetailsBase & {
+  label: ConsiderationType.CourtDecisionChunk;
   url: string;
+  caption: string;
+  articleOrParagraphCitations: string[];
 };
 ```
 
-### Webpages
-
-```typescript
-export type WebpageDetails = ConsiderationDetailsBase & {
-  label: ConsiderationType.Webpage;
-  url: string;
-};
-```
+---
 
 ### Files
 
-#### Document
-General documents:
+#### CaseFileChunkDetails
+A chunk from a file uploaded to a case folder. The full file metadata is embedded in `file`.
 
 ```typescript
-export type DocumentDetails = ConsiderationDetailsBase & {
-  label: ConsiderationType.Document;
-  url: string;
-};
-```
-
-#### CaseDocument
-Case-specific documents with paragraph structure:
-
-```typescript
-export type CaseDocumentDetails = ConsiderationDetailsBase & {
-  label: ConsiderationType.CaseDocument;
-  url: string;
+export type CaseFileChunkDetails = ConsiderationDetailsBase & {
+  label: ConsiderationType.CaseFileChunk;
+  file: OmnilexFileFolderFile;
   paragraphs: Paragraph[];
 };
 ```
 
-#### FAQ
-Frequently asked questions:
+#### InternalFileChunkDetails
+A chunk from a firm-level internal file (e.g. internal guidelines, knowledge base documents).
 
 ```typescript
-export type FAQDetails = ConsiderationDetailsBase & {
-  label: ConsiderationType.FAQ;
-  url: string;
-};
-```
-
-#### Template
-Document templates:
-
-```typescript
-export type TemplateDetails = ConsiderationDetailsBase & {
-  label: ConsiderationType.Template;
-  url: string;
-};
-```
-
-#### Nutshell
-Summarized legal information:
-
-```typescript
-export type NutshellDetails = ConsiderationDetailsBase & {
-  label: ConsiderationType.Nutshell;
-  url: string;
-};
-```
-
-#### OtherInternal
-Internal file sources with additional file-specific fields:
-
-```typescript
-export type OtherInternalDetails = ConsiderationDetailsBase & {
-  label: ConsiderationType.OtherInternal;
-  url: string;
+export type InternalFileChunkDetails = ConsiderationDetailsBase & {
+  label: ConsiderationType.InternalFileChunk;
+  file: OmnilexFileInternal;
   paragraphs: Paragraph[];
-  // TODO : Moha, we do not need these field once we refactor the internal files
-  file_name?: string;
-  file_segments_title?: string[];
-  file_segments_content?: string[];
-  file_segments_url?: string[];
 };
 ```
 
-### Non-Displayable Sources
+---
 
-#### Reasoning
-AI reasoning steps (backend use):
+### Webpages
+
+#### WebpageChunkDetails
 
 ```typescript
-export type ReasoningDetails = ConsiderationDetailsBase & {
-  label: ConsiderationType.Reasoning;
+export type WebpageChunkDetails = ConsiderationDetailsBase & {
+  label: ConsiderationType.WebpageChunk;
   url: string;
 };
 ```
 
-#### ExplicitlyMentioned
-Sources explicitly requested by user:
+---
+
+### Registries
+
+#### ZefixCompanyChunkDetails
+Company information from the Swiss commercial registry (Zefix).
 
 ```typescript
-export type ExplicitlyMentionedDetails = ConsiderationDetailsBase & {
-  label: ConsiderationType.ExplicitlyMentioned;
+export type ZefixCompanyChunkDetails = ConsiderationDetailsBase & {
+  label: ConsiderationType.ZefixCompanyChunk;
+  uid: string;
+  legalForm: string;
+  legalSeat: string;
+  canton: string;
+  status: 'ACTIVE' | 'CANCELLED' | 'BEING_CANCELLED';
   url: string;
 };
 ```
 
-#### Other
-Other source types:
+#### SwissregTrademarkChunkDetails
+Trademark information from the Swiss trademark registry (Swissreg).
 
 ```typescript
-export type OtherDetails = ConsiderationDetailsBase & {
-  label: ConsiderationType.Other;
+export type SwissregTrademarkChunkDetails = ConsiderationDetailsBase & {
+  label: ConsiderationType.SwissregTrademarkChunk;
+  trademarkNumber: string;
+  trademarkName: string;
+  status: string;
+  holder: string;
   url: string;
 };
 ```
 
-#### Legacy
-Legacy source type for backward compatibility:
-
-```typescript
-export type LegacyDetails = ConsiderationDetailsBase & {
-  label: ConsiderationType.Other;
-  url: string;
-};
-```
+---
 
 ## Union Type
 
-The `ConsiderationDetails` type is a discriminated union of all possible consideration detail types:
-
 ```typescript
 export type ConsiderationDetails =
-  | ParagraphOrArticleDetails
-  | CantonalParagraphOrArticleDetails
-  | CommunalParagraphOrArticleDetails
-  | CourtDecisionDetails
-  | WebpageDetails
-  | CommentaryDetails
-  | KoordinationDetails
-  | DocumentDetails
-  | DeadlineDetails
-  | AuthorityDetails
-  | ExplicitlyMentionedDetails
-  | CaseDocumentDetails
-  | FAQDetails
-  | TemplateDetails
-  | NutshellDetails
-  | OtherInternalDetails
-  | ReasoningDetails
-  | OtherDetails
-  | LegacyDetails;
+  | FederalArticleChunkDetails
+  | CantonalArticleChunkDetails
+  | CommunalArticleChunkDetails
+  | CommentaryChunkDetails
+  | CourtDecisionChunkDetails
+  | CaseFileChunkDetails
+  | InternalFileChunkDetails
+  | WebpageChunkDetails
+  | ZefixCompanyChunkDetails
+  | SwissregTrademarkChunkDetails;
 ```
+
+The `label` field is the discriminant for exhaustive narrowing.
+
+---
 
 ## Usage Example
 
-When processing consideration details from the API response:
-
 ```typescript
+import { ConsiderationDetails, ConsiderationType } from '@shared/types';
+
 function processConsideration(detail: ConsiderationDetails) {
-    // Common properties available on all types
-    console.log("Type:", detail.label);
-    console.log("Title:", detail.title);
-    console.log("Citations:", detail.citations.join(", "));
-    console.log("Content:", detail.content);
-    
-    // Type-specific handling
-    switch (detail.label) {
-        case ConsiderationType.OtherInternal:
-            // detail is typed as OtherInternalDetails
-            if (detail.file_name) {
-                console.log("File name:", detail.file_name);
-            }
-            detail.paragraphs.forEach(paragraph => {
-                console.log("Paragraph:", paragraph);
-            });
-            break;
-            
-        case ConsiderationType.CaseDocument:
-            // detail is typed as CaseDocumentDetails
-            console.log("URL:", detail.url);
-            detail.paragraphs.forEach(paragraph => {
-                console.log("Paragraph:", paragraph);
-            });
-            break;
-            
-        case ConsiderationType.ParagraphOrArticle:
-            // detail is typed as ParagraphOrArticleDetails
-            console.log("URL:", detail.url);
-            break;
-            
-        // ... handle other types
-    }
+  // Common properties available on every type
+  console.log('Type:     ', detail.label);
+  console.log('Title:    ', detail.title);
+  console.log('Citation: ', detail.citation);
+  console.log('Content:  ', detail.content);
+
+  switch (detail.label) {
+    case ConsiderationType.FederalArticleChunk:
+    case ConsiderationType.CantonalArticleChunk:
+    case ConsiderationType.CommunalArticleChunk:
+      console.log('Law URL:', detail.url);
+      break;
+
+    case ConsiderationType.CommentaryChunk:
+      console.log('Publisher:', detail.publisherName); // "staempfli" | "omnilex"
+      console.log('URL:', detail.url);
+      break;
+
+    case ConsiderationType.CourtDecisionChunk:
+      console.log('Caption:', detail.caption);
+      console.log('Related articles:', detail.articleOrParagraphCitations.join(', '));
+      break;
+
+    case ConsiderationType.CaseFileChunk:
+      console.log('File name:', detail.file.name);
+      console.log('Case folder:', detail.file.caseFolderId);
+      detail.paragraphs.forEach((p) => console.log('Paragraph:', p.content));
+      break;
+
+    case ConsiderationType.InternalFileChunk:
+      console.log('File name:', detail.file.name);
+      console.log('CMS path:', detail.file.fileCmsPath);
+      detail.paragraphs.forEach((p) => console.log('Paragraph:', p.content));
+      break;
+
+    case ConsiderationType.WebpageChunk:
+      console.log('URL:', detail.url);
+      break;
+
+    case ConsiderationType.ZefixCompanyChunk:
+      console.log('UID:', detail.uid);
+      console.log('Status:', detail.status);
+      console.log('Legal seat:', detail.legalSeat);
+      break;
+
+    case ConsiderationType.SwissregTrademarkChunk:
+      console.log('Trademark:', detail.trademarkName, '#', detail.trademarkNumber);
+      console.log('Holder:', detail.holder);
+      break;
+  }
 }
 ```
 
-## Response Example
+---
 
-Here's an example of consideration details in an API response:
+## Response Example
 
 ```json
 {
   "considerationDetails": [
     {
-      "label": "paragraph",
-      "title": "VRV, 3. Teil: Verhalten bei Unfällen, Sicherung der Unfallstelle",
-      "relevant_ids": [95, 87, 82],
-      "url": "https://www.fedlex.admin.ch/eli/cc/1962/1364_1409_1420/de#art_54",
-      "citations": ["Art. 54", "Art. 55", "Art. 56"],
-      "content": ["Bei Unfällen...", "Der Fahrzeugführer...", "Die Polizei..."]
+      "label": "federal_article_chunk",
+      "title": "VRV Art. 54",
+      "citation": "Art. 54 VRV",
+      "content": "Bei Unfällen muss der Fahrzeugführer sofort anhalten...",
+      "url": "https://www.fedlex.admin.ch/eli/cc/1962/1364_1409_1420/de#art_54"
     },
     {
-      "label": "court_decision",
+      "label": "court_decision_chunk",
       "title": "BGE 145 IV 123",
-      "relevant_ids": [88],
+      "citation": "BGE 145 IV 123, E. 3.2",
+      "content": "Das Bundesgericht hat entschieden...",
       "url": "https://www.bger.ch/ext/eurospider/live/de/php/aza/http/index.php?highlight_docid=atf%3A%2F%2F145-IV-123",
-      "citations": ["E. 3.2"],
-      "content": ["Das Bundesgericht hat entschieden..."]
+      "caption": "BGE 145 IV 123",
+      "articleOrParagraphCitations": ["Art. 54 VRV", "Art. 55 VRV"]
     },
     {
-      "label": "case_document",
-      "title": "Case Analysis Document",
-      "relevant_ids": [101, 102],
-      "url": "https://example.com/case-doc",
-      "citations": ["Section 1", "Section 2"],
-      "content": ["The case analysis shows...", "Further considerations include..."],
+      "label": "commentary_chunk",
+      "title": "BSK OR Art. 97 N 12",
+      "citation": "BSK OR Art. 97 N 12",
+      "content": "Die Kommentierung zu Art. 97 OR...",
+      "url": "https://www.legalis.ch/...",
+      "publisherName": "staempfli"
+    },
+    {
+      "label": "case_file_chunk",
+      "title": "Gutachten_2024.pdf",
+      "citation": "Gutachten_2024.pdf – S. 3",
+      "content": "The case analysis shows...",
+      "file": {
+        "name": "Gutachten_2024.pdf",
+        "type": "FOLDER_FILE",
+        "status": "COMPLETED",
+        "caseFolderId": "cf_abc123",
+        "fileId": "file_xyz789",
+        "paragraphsJsonBlobName": "paragraphs/file_xyz789.json",
+        "convertedPdfBlobName": "pdfs/file_xyz789.pdf",
+        "originalRawFileBlobName": "raw/file_xyz789.pdf",
+        "extractedContentBlobName": "extracted/file_xyz789.json"
+      },
       "paragraphs": [
         {
-          "content": "First paragraph of case document",
+          "content": "First paragraph of the document",
           "role": "paragraph",
-          "boundingRegions": [
-            {
-              "pageNumber": 1,
-              "polygon": [0, 0, 595, 0, 595, 100, 0, 100]
-            }
-          ],
-          "spans": [
-            {
-              "offset": 0,
-              "length": 35
-            }
-          ]
-        },
-        {
-          "content": "Second paragraph of case document",
-          "role": "paragraph",
-          "boundingRegions": [
-            {
-              "pageNumber": 1,
-              "polygon": [0, 100, 595, 100, 595, 200, 0, 200]
-            }
-          ],
-          "spans": [
-            {
-              "offset": 35,
-              "length": 33
-            }
-          ]
+          "boundingRegions": [{ "pageNumber": 3, "polygon": [0, 0, 595, 0, 595, 100, 0, 100] }],
+          "spans": [{ "offset": 0, "length": 32 }]
         }
       ]
     },
     {
-      "label": "other_internal",
-      "title": "Internal Guidelines",
-      "relevant_ids": [75, 70],
-      "url": "internal://guidelines",
-      "citations": ["Section 2.1", "Section 2.2"],
-      "content": ["Guidelines state...", "Procedures require..."],
-      "paragraphs": [],
-      "file_name": "internal_guidelines.pdf",
-      "file_segments_title": ["Section 2.1", "Section 2.2"],
-      "file_segments_url": ["#section-2-1", "#section-2-2"],
-      "file_segments_content": ["Guidelines state...", "Procedures require..."]
+      "label": "internal_file_chunk",
+      "title": "Internal Guidelines v2",
+      "citation": "Internal Guidelines v2 – §2.1",
+      "content": "Guidelines state that procedures require...",
+      "file": {
+        "name": "internal_guidelines_v2.pdf",
+        "type": "INTERNAL_FILE",
+        "status": "COMPLETED",
+        "fileHash": "sha256:abc...",
+        "fileSize": 204800,
+        "fileCmsUrl": "https://cms.example.com/files/internal_guidelines_v2",
+        "fileCmsPath": "/knowledge-base/internal_guidelines_v2.pdf",
+        "paragraphsJsonBlobName": "paragraphs/internal_guidelines_v2.json",
+        "originalRawFileBlobName": "raw/internal_guidelines_v2.pdf",
+        "extractedContentBlobName": "extracted/internal_guidelines_v2.json"
+      },
+      "paragraphs": []
+    },
+    {
+      "label": "zefix_company_chunk",
+      "title": "Muster AG",
+      "citation": "Muster AG – CHE-123.456.789",
+      "content": "Muster AG is a limited company incorporated in Zurich...",
+      "uid": "CHE-123.456.789",
+      "legalForm": "Aktiengesellschaft",
+      "legalSeat": "Zürich",
+      "canton": "ZH",
+      "status": "ACTIVE",
+      "url": "https://www.zefix.ch/en/search/entity/list/firm/1234567"
+    },
+    {
+      "label": "swissreg_trademark_chunk",
+      "title": "HELVETICA",
+      "citation": "Trademark #P-123456",
+      "content": "Trademark HELVETICA registered for class 16...",
+      "trademarkNumber": "P-123456",
+      "trademarkName": "HELVETICA",
+      "status": "Registered",
+      "holder": "Muster AG",
+      "url": "https://www.swissreg.ch/srclient/faces/jsp/trademark/SR.jsp?id=P-123456"
     }
   ]
 }

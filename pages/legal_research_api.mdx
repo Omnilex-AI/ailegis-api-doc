@@ -1,490 +1,290 @@
-import React from 'react';
-
-export function Badge({ children }) {
-  return <span style={{
-    backgroundColor: 'orange',
-    borderRadius: '5px',
-    padding: '2px 6px',
-    fontSize: '0.8em'
-  }}>
-    {children}
-  </span>
-}
-
-
 # Legal Research API
 
-There is only one endpoint for the legal research api. The goal of this endpoint is to given a legal question and some optional document attached, return a draft answer and all the documents relevant to answer that question.
+There is a single endpoint for the Legal Research API. Given a legal question (and optional attached files) it streams back a draft answer together with all source documents relevant to that question.
 
-It points to an [`EventSource`](https://developer.mozilla.org/fr/docs/Web/API/EventSource) that will stream multiple `json` objects.
-We use the event approach because we compute part of the answer at different times, instead of waiting for everything to be ready this allow to show intermediate results as they come.
+The endpoint uses **Server-Sent Events (SSE)** — a `POST` triggers the stream and individual JSON objects are pushed as they are computed, so the UI can display intermediate results immediately without waiting for the full answer.
 
-### Connect to the Endpoint
+---
 
-The endpoint url is: `https://api.omnilex.ai/advice/app/combined`
+## Source files
 
-To connect to the EventStream, you need to send a `POST` request to the endpoint and listen to the events of the `EventSource`, each event has a type ( *response*, *considerationDetails*, *confidence*, *error*, *legalArea* ), the last event is of type *result*.
+| File | Purpose |
+|---|---|
+| `shared/dtos/legal-research.dto.ts` | `QueryPayload` request body |
+| `shared/types/thread.types.ts` | `Thread`, `Interaction` |
+| `shared/types/omnilex-result.types.ts` | `OmnilexResultThread`, `OmnilexResultStatus` |
+| `shared/types/result-progress.types.ts` | All SSE event types (`ResultProgress`) |
+| `shared/types/input-selected-sources.types.ts` | `InputSelectedSources`, `SelectedSource` |
+| `shared/types/countries.types.ts` | `Country` enum |
+| `shared/types/consideration-details.types.ts` | `ConsiderationDetails` (see separate doc) |
 
-The country field will for the search to be done in a specific jurisdiction. ( Currently only CH and DE is supported,FR,US and BR are in beta state )
+---
 
-Here is an example of an implementation in typescript (in this example we use the [`sse.js`](https://github.com/mpetazzoni/sse.js?files=1) package to force the `POST` request to create the `EventSource`):
+## Endpoint
 
-```ts copy
-import { SSE } from "sse.js";
+```
+POST https://api.omnilex.ai/legal-research/:type/combined
+```
 
-const endpoint_url = "https://api.omnilex.ai/advice/app/combined";
-const email = "test@test.ch"
+`:type` is a path segment that controls the run mode:
 
-// OmnilexFile types are defined in the OmnilexFile Types page
-// See: /omnilex_file_types
+| Value | Description |
+|---|---|
+| `app` | Normal production run |
+| `demo` | Demo / debug run |
 
-// ConsiderationType and ConsiderationDetails types are defined in the ConsiderationDetails Types page
-// See: /consideration_details_types
+### Headers
 
-export enum Country {
-  CH = 'CH',
-  DE = 'DE',
-  LI = 'LI',
-  FR = 'FR',
-  US = 'US',
-  BR = 'BR',
+| Header | Value |
+|---|---|
+| `Content-Type` | `application/json` |
+| `Authorization` | `Bearer <token>` |
+
+---
+
+## Request body — `QueryPayload`
+
+```typescript
+export interface QueryPayload {
+  thread: OmnilexResultThread;
+  projectId?: string; // Optional; falls back to user's default project
 }
+```
 
-interface Interaction {
-  // General
-  id: string; // not used but required ( can be any string )
-  date: Date; // not used but required ( can be any Date )
+### `OmnilexResultThread`
 
-  // Input
-  question: string;
-  documents?: OmnilexFile[];
-  inputSelectedSources?: InputSelectedSources;
-  countries: Country[]
-
-  // Reply
-  reply: string;
-  sources: ConsiderationDetails[]
-}
-
-interface Thread {
-  id: string; // if not defined a new thread is created and saved
+```typescript
+export type OmnilexResultThread = {
+  id?: string;            // Omit or leave empty to create a new thread
   date: Date;
-  ownerUsername: email;
-  interactions: Interaction[];
-}
+  ownerUsername: string;  // Must match the authenticated user's email for follow-ups
+  projectId?: string;
 
-interface OmnilexResultThread {
+  can_read: string[];
+  can_write: string[];
+
+  errors?: SerializableError[];
+  status: 'PROCESSING' | 'COMPLETED' | 'ERROR';
+
+  type: 'thread';
+  thread: Thread;
+};
+```
+
+### `Thread`
+
+```typescript
+export interface Thread {
   id?: string;
   date: Date;
   ownerUsername: string;
-
-  can_read: string[]
-  can_write: string[]
-
-  status: 'PROCESSING' | 'COMPLETED' | 'ERROR';
-  errors?: any[];
-
-  type: "thread";
-  thread: Thread;
-}
-interface QueryPayload {
-  thread: OmnilexResultThread;
-}
-
-const source = new SSE(endpoint_url, {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    Authorization: `Bearer <token>`,
-  },
-  payload: JSON.stringify({
-    thread: {
-      
-      date: new Date(),
-      ownerUsername: email,
-      can_read: [],
-      can_write: [],
-      status: "COMPLETED",
-      type: "thread",
-
-      thread: {
-        date: new Date(),
-        ownerUsername: email,
-        interactions: [
-          {
-            id: "0",
-            countries: ["CH"]
-            question: "I had an accident with a e-scooter in Zug, how can I reply to this letter ?",
-            date: new Date(),
-            documents: [],
-            sources: [],
-            reply: ""
-          },
-        ],
-    },
-  }
-  } as QueryPayload),
-});
-```
-
-### Event types
-
-Once the POST request is triggered, if the token is valid as well as the payload, a stream of JSON objects will be returned.
-These objects can have different fields, sometimes just one, sometimes multiple at the same time.
-
-Here is the list of the most important fields (if you see a new field appearing, you can ignore it, as it would be an experimental feature, and we will notify you when the experimental feature is ready for production).
-
-The last event is the thread object that return the entire new state of the thread. 
-
-#### *response* : Draft Stream
-```json
-{
-  "response" : "string"
-} 
-```
-You have to concatenate all the `response` strings to form the final draft. 
-The last `response` include the string `<AILEGIS-END>`.
-
-#### *considerationDetails* : Document List
-
-The `considerationDetails` field contains an array of source documents that were used to generate the response. Each consideration detail has a specific type and structure.
-
-For a complete reference of all `ConsiderationType` enum values and `ConsiderationDetails` type definitions, see the [ConsiderationDetails Types](/consideration_details_types) documentation page.
-
-##### Example Response
-
-```json
-{
-  "considerationDetails": [
-    {
-      "label": "paragraph",
-      "title": "VRV, 3. Teil: Verhalten bei Unfällen, Sicherung der Unfallstelle",
-      "relevant_ids": [95, 87, 82],
-      "url": "https://www.fedlex.admin.ch/eli/cc/1962/1364_1409_1420/de#art_54",
-      "article_citations": ["Art. 54", "Art. 55", "Art. 56"],
-      "article_paragraphs_text": ["Bei Unfällen...", "Der Fahrzeugführer...", "Die Polizei..."]
-    },
-    {
-      "label": "court_decision",
-      "title": "BGE 145 IV 123",
-      "relevant_ids": [88],
-      "url": "https://www.bger.ch/ext/eurospider/live/de/php/aza/http/index.php?highlight_docid=atf%3A%2F%2F145-IV-123",
-      "article_citations": ["E. 3.2"],
-      "article_paragraphs_text": ["Das Bundesgericht hat entschieden..."]
-    },
-    {
-      "label": "other_internal",
-      "file_name": "internal_guidelines.pdf",
-      "relevant_ids": [75, 70],
-      "file_segments_title": ["Section 2.1", "Section 2.2"],
-      "file_segments_url": ["#section-2-1", "#section-2-2"],
-      "file_segments_content": ["Guidelines state...", "Procedures require..."]
-    }
-  ]
+  status?: 'PROCESSING' | 'COMPLETED' | 'ERROR';
+  interactions: Interaction[];
+  errors?: SerializableError[];
 }
 ```
 
-#### *legalArea* : Legal Area
-```json
-{
-  "legalArea" : "string"
-} 
+### `Interaction`
+
+The API always answers the **last** interaction in the array, using previous ones as conversation context.
+
+```typescript
+export interface Interaction {
+  // ── Required ──────────────────────────────────────────────
+  id: string;
+  date: Date;
+  question: string;
+  countries: Country[];   // Jurisdiction(s) to search in
+
+  // ── Optional input ────────────────────────────────────────
+  documents?: OmnilexFile[];
+  inputSelectedSources?: InputSelectedSources; // Filter which sources to search
+  flowKey?: string;       // Which flow to run (defaults to 'default')
+  assistantId?: string;   // Resource ID of a configured assistant (overrides flowKey)
+  systemPrompt?: string;  // Custom system prompt override
+
+  // ── Output (set by the API, send empty values) ─────────────
+  sources: ConsiderationDetails[];
+  reply: string;
+  followupProposals?: string[];
+  progressSteps?: ResultProgress[];
+}
 ```
 
-#### *agentSteps* : A list of all steps the legal research agent is taking
-<Badge>Experimental</Badge>
-```json
-{
-  "agentSteps" : {
-    "message": "string", 
-    "level": "INFO" | "DEBUG"
-  }[]
-} 
-```
-The agentSteps are intermediate steps the agent is taking before giving the final answer. It is meant primarly to be used for debugging purposes, but can be extended to UI purposes to show the reasoning of the model while the user is waiting for the answer. 
+### `Country`
 
-#### *resultId* : Result ID
-
-```json
-{
-  "resultId" : "string"
-} 
-```
-The resultId is the id of the OmnilexResultThread that will be stored in the history.
-It is the 1st event in the stream.
-
-
-#### *result* : Result
-
-```json
-{
-  "result" : "OmnilexResultThread"
-} 
+```typescript
+export enum Country {
+  AT = 'AT',  // Austria
+  CH = 'CH',  // Switzerland
+  DE = 'DE',  // Germany
+  LI = 'LI',  // Liechtenstein
+  FR = 'FR',  // France (beta)
+  US = 'US',  // United States (beta)
+  BR = 'BR',  // Brazil (beta)
+}
 ```
 
-The result is the final event in the steam. 
-It contains the `OmnilexResultThread` with the final answer and the list of documents that were used to answer the question, as well as the dev related metadata.
+---
 
-#### *error* : Error
-```json
-{
-  "error" : "string"
-} 
-```
-The error string is a message, not an error code as it is more meant for debugging. Note that the API call still respect the HTTP error codes standards.
+## SSE Event stream
 
-Here are some examples of the type of messages: 
-- `Failed to parse documents, error: ...`
-- `Lost connection with database, error: ...`
+Each event is a JSON object sent as a standard SSE `data:` line. The `type` field discriminates the event. Every event also carries:
 
-### Fully functional example
-
-> Do not forget to replace the `token` , if you do not have one look at the [authentication doc](/authentication)
-
-```ts filename="example.ts" copy
-import { SSE } from "sse.js";
-
-const endpoint_url = "https://api.omnilex.ai/advice/app/combined"
-const email = "test@test.ch"
-
-const source = new SSE(endpoint_url, {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    Authorization: `Bearer <token>`,
-  },
-  payload: JSON.stringify({
-    thread: {
-      date: new Date(),
-      ownerUsername: email,
-      can_read: [],
-      can_write: [],
-      status: "COMPLETED",
-      type: "thread",
-      thread: {
-        date: new Date(),
-        ownerUsername: email,
-        interactions: [
-          {
-            id: "0",
-            countries: ["CH"]
-            question: "I had an accident with a e-scooter in Zug, how can I reply to this letter ?",
-            date: new Date(),
-            documents: [],
-            sources: [],
-            reply: ""
-          },
-        ],
-      },
-    },
-  }),
-});
-
-source.addEventListener("message", async (e: { data: string }) => {
-  let data = JSON.parse(e.data);
-  console.log(data)
-});
-```
-
-Example of output on the console: 
-```md copy
-{
-  considerationDetails: [ 
-    {
-      label: 'paragraph', 
-      title: 'VRV, 3. Teil: Verhalten bei Unfällen, Sicherung der Unfallstelle', 
-      relevant_ids: [95, 87, 82], 
-      url: 'https://www.fedlex.admin.ch/eli/cc/1962/1364_1409_1420/de#art_54', 
-      article_citations: ['Art. 54', 'Art. 55', 'Art. 56'],
-      article_paragraphs_text: ['Bei Unfällen...', 'Der Fahrzeugführer...', 'Die Polizei...']
-    },
-    {
-      label: 'court_decision',
-      title: 'BGE 145 IV 123',
-      relevant_ids: [88],
-      url: 'https://www.bger.ch/ext/eurospider/live/de/php/aza/http/index.php?highlight_docid=atf%3A%2F%2F145-IV-123',
-      article_citations: ['E. 3.2'],
-      article_paragraphs_text: ['Das Bundesgericht hat entschieden...']
-    },
-    {
-      label: 'cantonal_paragraph',
-      title: 'Strassenverkehrsgesetz des Kantons Zürich',
-      relevant_ids: [85],
-      url: 'https://www.zh.ch/de/politik-staat/gesetze-beschluesse/gesetzessammlung/zhlex-ls/erlass-7411_01.html',
-      article_citations: ['§ 12'],
-      article_paragraphs_text: ['Im Kanton Zürich gilt...']
-    }
-  ]
-}
-
-{
-  response: 'Given Article '
-}
-
-{
-  response: 'VRV 3, you '
-}
-
-{
-  response: 'are entitled to '
-}
-
-...
-
-{
-  response: 'best. <AILEGIS-END>'
-}
-
-{
-  legalArea: "Construction law"
-}
-
-...
-
-{
-  thread: { ... }
-}
+- `groupingKey` — which UI group it belongs to (`"default"` or `"reasoning"`)
+- `eventId` — the thread ID (injected automatically by the server)
 
 ```
-
-### Linking considerationDetails to segment in the response.
-
-The answers are forced to follow the naming of the citation of the considerationDetails, if that considerationDetails is relevant for that paragraph.
-The easiest way to make a link from the text to the source is to use a regex on the considerationDetails to find matching citations.
-
-
-### Chat/Discussion mode with follow up questions
-
-To ask for a follow up, we can resend the current thread and add a new interaction to it. In general the api will always answer the last interaction, using old interaction as context.
-
-What is important to note is the id of the thread, as this is a follow up, we want to update in the history the same thread with the follow up result, for it the id if the thread should be the same. If the id is empty or the email of the owner of the thread is not the one asking the follow up a new thread is stored in the history.
-
-```ts filename="example.ts" copy
-import { SSE } from "sse.js";
-
-const endpoint_url = "https://api.omnilex.ai/advice/app/combined"
-const email = "test@test.ch"
-
-const old_thread: OmnilexResultThread = { ... } // this thread is the thread on which we want to ask a follow up question
-
-// if old_thread.id is null or old_thread.ownerUsername !== email, then a new thread will be stored in the database.
-
-const source = new SSE(endpoint_url, {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    Authorization: `Bearer <token>`,
-  },
-  payload: JSON.stringify({
-    thread: {
-      ...old_thread,
-      thread: {
-        ...old_thread.thread,
-        interactions: [
-          ...old_thread.thread.interactions,
-          {
-            id: "1",
-            question: "Can you elaborate a bit more that topic ?",
-            date: new Date(),
-            documents: [],
-            sources: [],
-            reply: ""
-          },
-        ],
-      },
-    },
-  }),
-});
-
-source.addEventListener("message", async (e: { data: string }) => {
-  let data = JSON.parse(e.data);
-  console.log(data)
-});
+data: { "type": "...", ...fields }\n\n
 ```
 
-### Filter the search on specific areas. 
+### Event reference
 
-By deafult Omnilex will search through all available resources the user has access to, to provide the best answer. 
-But you can setup input filters that will force Omnilex to only search though a specific category. 
-For example only base your answer on court decisions. 
+#### `status` — lifecycle markers
 
-Note that even if you put the filter in the query, if the user does not have the permission to access this resource, 
-Omnilex will not search through these resources for that user.
+The very **first** and very **last** events are always `status` events.
 
-Here is how to set it up as a parameter of the Thread: 
-```ts filename="example.ts" copy
+```typescript
+// First event
+{ type: 'status', status: 'start', resultId: string }
 
-const source = new SSE(endpoint_url, {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    Authorization: `Bearer <token>`,
-  },
-  payload: JSON.stringify({
-    thread: {
-      
-      date: new Date(),
-      ownerUsername: email,
-      can_read: [],
-      can_write: [],
-      status: "COMPLETED",
-      type: "thread",
+// Last event (success)
+{ type: 'status', status: 'end', resultId: string }
 
-      thread: {
-        date: new Date(),
-        ownerUsername: email,
-        interactions: [
-          {
-            id: "0",
-            countries: ["CH"]
-            question: "I had an accident with a e-scooter in Zug, how can I reply to this letter ?",
-            date: new Date(),
-            inputSelectedSources: {
-                selectedSources: [ { id: "court-decisions" , filters: [] } ]
-              }
-            documents: [],
-            sources: [],
-            reply: ""
-          },
-        ],
-    },
-  }
-  } as QueryPayload),
-});
+// Last event (error)
+{ type: 'status', status: 'error', error?: string }
 ```
 
+> `resultId` is the ID of the thread stored in the database — use it for follow-up requests.
 
-Here are the currently supported filters: 
-```ts filename="example.ts" copy
-export interface InternalDataSource {
-  id: 'internal-data';
+---
+
+#### `omnilex-result` — full thread snapshot
+
+Sent **twice**: once immediately after the thread is created (so the UI can display the shell) and once at the very end with the completed answer.
+
+```typescript
+{ type: 'omnilex-result', omnilexResult: OmnilexResultThread }
+```
+
+---
+
+#### `delta` — streaming answer chunks
+
+Concatenate all `delta` strings in order to reconstruct the final draft answer.
+
+```typescript
+{ type: 'delta', delta: string }
+```
+
+---
+
+#### `consideration` — source documents
+
+Contains the `ConsiderationDetails` objects found during the research. May be emitted multiple times as more sources are retrieved. The final complete list is also available on `omnilexResult.thread.interactions[last].sources`.
+
+```typescript
+{ type: 'consideration', considerations: ConsiderationDetails[] }
+```
+
+For the full `ConsiderationDetails` type reference see `consideration-details.md`.
+
+---
+
+#### `search` / `search-results` — search progress
+
+Emitted while the agent is searching a specific source type.
+
+```typescript
+{ type: 'search', considerationType: ConsiderationType }
+{ type: 'search-results', considerations: ConsiderationDetails[] }
+```
+
+---
+
+#### `fetch` / `fetch-results` — fetch progress
+
+Emitted while the agent is fetching the full content of sources.
+
+```typescript
+{ type: 'fetch', considerationType: ConsiderationType }
+{ type: 'fetch-results', considerations: ConsiderationDetails[] }
+```
+
+---
+
+#### `message` — human-readable progress messages
+
+Status messages intended for display in the UI while the user waits (e.g., "Searching legal sources", "Reading 5 sources").
+
+```typescript
+{ type: 'message', message: string }
+```
+
+Common messages are localised; see `ReasoningMessageTranslations` in `result-progress.types.ts`.
+
+---
+
+#### `followups` — suggested follow-up questions
+
+```typescript
+{ type: 'followups', followups: string[] }
+```
+
+---
+
+#### `group-start` / `group-end` — progress grouping
+
+Used to visually group related progress events in the UI.
+
+```typescript
+{ type: 'group-start', groupingKey: 'default' | 'reasoning' }
+{ type: 'group-end',   groupingKey: 'default' | 'reasoning' }
+```
+
+---
+
+#### `question` — interactive clarification (ask_question flow only)
+
+The agent may pause to ask the user a clarifying question before proceeding. The UI must send the answer back as a follow-up interaction.
+
+```typescript
+// Single question
+{
+  type: 'question';
+  toolCallId: string;
+  reasoning: string;
+  question: string;
+  suggestedAnswers: string[];
+  multiSelect?: boolean;
 }
 
-export interface ArticlesSource {
-  id: 'articles';
-  filters: string[];
+// Multi-question
+{
+  type: 'question';
+  toolCallId: string;
+  reasoning: string;
+  questions: {
+    id: string;
+    label: string;
+    question: string;
+    suggestedAnswers: string[];
+    multiSelect?: boolean;
+  }[];
 }
+```
 
-export interface CourtDecisionsSource {
-  id: 'court-decisions';
-  filters: string[];
-}
+---
 
-export interface KoordinationSource {
-  id: 'koordination';
-}
+## `InputSelectedSources` — filtering sources
 
-export interface LegalisSource {
-  id: 'legalis';
-}
+By default, Omnilex searches all resources the user has access to. Use `inputSelectedSources` on an `Interaction` to restrict the search to specific categories.
 
-export interface OmnilexCommentariesSource {
-  id: 'omnilex-commentaries';
-}
+> Permission check: even if a source is listed here, it will only be searched if the user has permission to access it.
 
-export interface WebsitesSource {
-  id: 'websites';
-  blocked: string[];
+```typescript
+export interface InputSelectedSources {
+  selectedSources: SelectedSource[];
 }
 
 export type SelectedSource =
@@ -493,12 +293,269 @@ export type SelectedSource =
   | CourtDecisionsSource
   | OmnilexCommentariesSource
   | KoordinationSource
-  | LegalisSource
-  | WebsitesSource;
+  | WebsitesSource
+  | EULawsSource
+  | ZefixSource
+  | StaempfliSource
+  | SwissregSource
+  | ComputerUseSource;
+```
 
-export interface InputSelectedSources {
-  selectedSources: SelectedSource[];
+### Source type definitions
+
+```typescript
+export interface ArticlesSource {
+  id: 'articles';
+  type: 'articles';
+  filters: string[];        // e.g. SR numbers to restrict to specific laws
+}
+
+export interface CourtDecisionsSource {
+  id: 'court-decisions';
+  type: 'court-decisions';
+  filters: string[];        // e.g. court identifiers
+}
+
+export interface OmnilexCommentariesSource {
+  id: 'omnilex-commentaries';
+  type: 'omnilex-commentaries';
+}
+
+export interface KoordinationSource {
+  id: 'koordination';
+  type: 'koordination';
+}
+
+export interface WebsitesSource {
+  id: 'websites';
+  type: 'websites';
+  blocked: string[];        // Domains to exclude
+}
+
+export interface EULawsSource {
+  id: 'eu-laws';
+  type: 'eu-laws';
+}
+
+export interface ZefixSource {
+  id: 'zefix';
+  type: 'zefix';
+}
+
+export interface StaempfliSource {
+  id: 'staempfli';
+  type: 'staempfli';
+}
+
+export interface SwissregSource {
+  id: 'swissreg';
+  type: 'swissreg';
+}
+
+export interface ComputerUseSource {
+  id: 'computer-use';
+  type: 'computer-use';
+}
+
+// Internal data sources (firm-level knowledge bases)
+export interface InternalDataSource {
+  id: string;               // Unique identifier for this internal data source
+  type: 'internal-data';
+  resourceId: string;
+  databaseName: string;
+  files: TreeStructureFile[];
+  folders: TreeStructureFolder[];
+  favicon?: string;
+  title?: string;
+  shortDescription?: string;
+  summary?: string;
 }
 ```
 
+---
 
+## Linking citations in the answer to sources
+
+The answer text always uses the exact `citation` string from the matching `ConsiderationDetails` object. The simplest way to create hyperlinks is to iterate over `considerationDetails` and run a regex / string search against the answer text.
+
+---
+
+## Examples
+
+### TypeScript client (using `sse.js`)
+
+```typescript
+import { SSE } from 'sse.js';
+import type { ResultProgress } from '@shared/types/result-progress.types';
+import type { QueryPayload } from '@shared/dtos/legal-research.dto';
+
+const ENDPOINT = 'https://api.omnilex.ai/legal-research/app/combined';
+const email = 'user@example.com';
+
+const payload: QueryPayload = {
+  thread: {
+    date: new Date(),
+    ownerUsername: email,
+    can_read: [],
+    can_write: [],
+    status: 'COMPLETED',
+    type: 'thread',
+    thread: {
+      date: new Date(),
+      ownerUsername: email,
+      interactions: [
+        {
+          id: '0',
+          date: new Date(),
+          countries: ['CH'],
+          question: 'I had an accident with an e-scooter in Zug. How should I reply to this letter?',
+          documents: [],
+          sources: [],
+          reply: '',
+        },
+      ],
+    },
+  },
+};
+
+const source = new SSE(ENDPOINT, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    Authorization: 'Bearer <token>',
+  },
+  payload: JSON.stringify(payload),
+});
+
+let answer = '';
+
+source.addEventListener('message', (e: { data: string }) => {
+  const event: ResultProgress = JSON.parse(e.data);
+
+  switch (event.type) {
+    case 'status':
+      if (event.status === 'start') console.log('Stream started. Thread ID:', event.resultId);
+      if (event.status === 'end')   console.log('Stream finished.');
+      if (event.status === 'error') console.error('Error:', event.error);
+      break;
+
+    case 'delta':
+      answer += event.delta;
+      break;
+
+    case 'consideration':
+      console.log('Sources received:', event.considerations.length);
+      break;
+
+    case 'message':
+      console.log('Progress:', event.message);
+      break;
+
+    case 'followups':
+      console.log('Suggested follow-ups:', event.followups);
+      break;
+
+    case 'omnilex-result':
+      console.log('Thread snapshot:', event.omnilexResult.status);
+      break;
+  }
+});
+```
+
+---
+
+### Filtering to court decisions only
+
+```typescript
+interactions: [
+  {
+    id: '0',
+    date: new Date(),
+    countries: ['CH'],
+    question: 'What does the BGer say about liability in e-scooter accidents?',
+    inputSelectedSources: {
+      selectedSources: [
+        { id: 'court-decisions', type: 'court-decisions', filters: [] },
+      ],
+    },
+    documents: [],
+    sources: [],
+    reply: '',
+  },
+],
+```
+
+---
+
+### Follow-up question (chat mode)
+
+To ask a follow-up, resend the thread with the same `id` and append a new interaction. The API uses all previous interactions as context and answers only the last one.
+
+> If `thread.id` is missing/empty or `ownerUsername` does not match the authenticated user, a brand-new thread is stored instead of updating the existing one.
+
+```typescript
+const previousThread: OmnilexResultThread = { /* ... result from previous call ... */ };
+
+const followUpPayload: QueryPayload = {
+  thread: {
+    ...previousThread,
+    thread: {
+      ...previousThread.thread,
+      interactions: [
+        ...previousThread.thread.interactions,
+        {
+          id: String(previousThread.thread.interactions.length),
+          date: new Date(),
+          countries: ['CH'],
+          question: 'Can you elaborate on the liability aspects?',
+          documents: [],
+          sources: [],
+          reply: '',
+        },
+      ],
+    },
+  },
+};
+```
+
+---
+
+### Using a configured assistant
+
+Pass the `assistantId` of a configured `OmnilexResourceAssistant` resource. This overrides `flowKey`, applies the assistant's system prompt, model, and knowledge files automatically.
+
+```typescript
+interactions: [
+  {
+    id: '0',
+    date: new Date(),
+    countries: ['CH'],
+    question: 'Draft a reply to this cease-and-desist letter.',
+    assistantId: 'resource-uuid-of-assistant',
+    documents: [],
+    sources: [],
+    reply: '',
+  },
+],
+```
+
+---
+
+## Breaking changes vs. previous API version
+
+| Area | Old | New |
+|---|---|---|
+| **Endpoint path** | `/advice/app/combined` | `/legal-research/:type/combined` |
+| **SSE event shape** | Top-level keys (`response`, `considerationDetails`, `legalArea`, …) | All events use a `type` discriminant field |
+| **Streaming answer** | `{ response: "…" }` (last chunk ends with `<AILEGIS-END>`) | `{ type: 'delta', delta: "…" }` (no sentinel string) |
+| **Source documents** | `{ considerationDetails: […] }` | `{ type: 'consideration', considerations: […] }` |
+| **Legal area** | `{ legalArea: "…" }` | `{ type: 'message', message: "…" }` (merged into general progress messages) |
+| **Final result** | `{ result: OmnilexResultThread }` | `{ type: 'omnilex-result', omnilexResult: OmnilexResultThread }` |
+| **Thread ID event** | `{ resultId: "…" }` | `{ type: 'status', status: 'start', resultId: "…" }` |
+| **Error event** | `{ error: "…" }` | `{ type: 'status', status: 'error', error: "…" }` |
+| **Country support** | AT missing | `AT` (Austria) added |
+| **Source filter `InternalDataSource`** | `{ id: 'internal-data' }` | Full metadata object with `resourceId`, `databaseName`, `files`, `folders` |
+| **New source filters** | — | `EULawsSource`, `ZefixSource`, `StaempfliSource`, `SwissregSource`, `ComputerUseSource` |
+| **`QueryPayload`** | `{ thread }` | `{ thread, projectId? }` |
+| **`Interaction` input** | — | `flowKey?`, `assistantId?`, `systemPrompt?` added |
+| **`Interaction` output** | — | `followupProposals?`, `progressSteps?` added |
